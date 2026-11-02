@@ -1,0 +1,6 @@
+[
+  {"id": "env", "type": "deploy_env", "env_id": "soc", "sandbox_type": "local", "depends_on": []},
+  {"id": "seed", "type": "load_artifact", "env_id": "soc", "artifact_id": "soc-sample", "depends_on": [{"task_step_id": "env"}]},
+  {"id": "check", "type": "env_outcome_verifier", "env_id": "soc", "file_artifact_id": "check_soc",
+   "verifier_id": "soc-smoke", "depends_on": [{"task_step_id": "seed"}]}
+]

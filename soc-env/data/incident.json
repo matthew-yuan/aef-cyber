@@ -1,0 +1,146 @@
+{
+  "schema_version": "1.0",
+  "metadata": {
+    "incident_id": "INC-26-1107",
+    "exercise": "OPERATION GRANITE CROSSING (fictional)",
+    "network": "52 ID mission network, exercise enclave EX-NET-52 (fictional)",
+    "current_time": "2026-11-06T14:00:00Z",
+    "shift": "Day shift, Division Cyber Defense Cell (CDC)",
+    "tasking": "Triage every open alert in the queue, then write the incident report for what you confirm. The Division G-6 wants the report before the 1600Z update."
+  },
+  "organization": {
+    "name": "52nd Infantry Division (fictional) Cyber Defense Cell, under the G-6",
+    "mission": "Defend the division's exercise network while the staff plans OPERATION GRANITE CROSSING. The G-3 PLANS share on SRV-FILE-01 holds the draft division order (OPORD 26-04) and its annexes.",
+    "crown_jewels": ["SRV-FILE-01 (G-3 PLANS share, draft OPORD 26-04)", "SRV-DC-01 (domain controller)"],
+    "escalation": {
+      "division_g6": "Report confirmed incidents to the Division G-6 within 1 hour of confirmation.",
+      "cpt": "Request the regional Cyber Protection Team (CPT) for any confirmed data loss or domain-level compromise.",
+      "g3": "Any compromise of the PLANS share is reported to the G-3 and the Chief of Staff as a possible compromise of the operation."
+    },
+    "network_ranges": {"workstations": "192.0.2.0/24", "servers": "198.51.100.0/24", "vpn_pool": "192.0.2.200-192.0.2.250"}
+  },
+  "assets": [
+    {"hostname": "WS-G3-014", "ip": "192.0.2.14", "role": "G-3 plans workstation", "owner": "j.okafor (G-3 plans officer)", "criticality": "high", "os": "Windows 11", "notes": "Mapped drive P: to \\\\SRV-FILE-01\\PLANS."},
+    {"hostname": "WS-G6-021", "ip": "192.0.2.21", "role": "G-6 helpdesk workstation", "owner": "m.reyes (G-6 helpdesk)", "criticality": "medium", "os": "Windows 11", "notes": "Helpdesk tooling installed. Used for approved credential-hygiene tests under change control."},
+    {"hostname": "WS-G1-007", "ip": "192.0.2.7", "role": "G-1 personnel workstation", "owner": "a.lindqvist (G-1)", "criticality": "low", "os": "Windows 11", "notes": ""},
+    {"hostname": "WS-MED-003", "ip": "192.0.2.33", "role": "Division surgeon section workstation", "owner": "t.baptiste (medical operations)", "criticality": "medium", "os": "Windows 11", "notes": ""},
+    {"hostname": "SRV-FILE-01", "ip": "198.51.100.10", "role": "File server: G-3 PLANS share and staff shares", "owner": "G-6 server team", "criticality": "critical", "os": "Windows Server 2022", "notes": "Crown jewel. Holds the draft OPORD 26-04 under \\\\SRV-FILE-01\\PLANS\\OPORD_26-04_DRAFT. Backups run as svc_backup nightly at 0300Z from the server itself."},
+    {"hostname": "SRV-DC-01", "ip": "198.51.100.5", "role": "Domain controller", "owner": "G-6 server team", "criticality": "critical", "os": "Windows Server 2022", "notes": "Crown jewel."},
+    {"hostname": "SRV-VSCAN-01", "ip": "198.51.100.40", "role": "Vulnerability scanner", "owner": "G-6 cyber defense cell", "criticality": "medium", "os": "Linux", "notes": "Authorized scanner. Scans the enclave weekly under change record CHG-0412."},
+    {"hostname": "SRV-WEB-02", "ip": "198.51.100.22", "role": "Legacy intranet web server", "owner": "G-6 server team", "criticality": "high", "os": "Windows Server 2016", "notes": "DECOMMISSIONED 2026-10-15 under CHG-0398. Recorded as powered off; awaiting physical removal, firewall rule cleanup and DNS cleanup."},
+    {"hostname": "VPN-GW-01", "ip": "198.51.100.2", "role": "Remote access VPN gateway", "owner": "G-6 network team", "criticality": "high", "os": "Appliance", "notes": "Assigns client addresses from the VPN pool 192.0.2.200-250. MFA is not enforced for exercise accounts."}
+  ],
+  "alerts": [
+    {"id": "ALT-1001", "time": "2026-11-05T02:16:00Z", "source": "IDS", "severity": "high", "title": "Internal port scan", "host": "SRV-VSCAN-01", "user": null, "status": "new",
+     "description": "198.51.100.40 probed 1,024 ports on 212 hosts in 192.0.2.0/24 and 198.51.100.0/24 between 02:02Z and 02:48Z on 2026-11-05 (a Thursday).", "indicators": ["198.51.100.40"]},
+    {"id": "ALT-1002", "time": "2026-11-05T22:41:00Z", "source": "VPN", "severity": "low", "title": "Successful VPN logon from a new location", "host": "VPN-GW-01", "user": "j.okafor", "status": "new",
+     "description": "User j.okafor authenticated to VPN-GW-01 from 203.0.113.77 (geolocation: Varenna). The user's previous 90 days of logons were all from the garrison range. Assigned VPN address 192.0.2.214.", "indicators": ["203.0.113.77"]},
+    {"id": "ALT-1003", "time": "2026-11-06T01:14:00Z", "source": "Windows security log", "severity": "medium", "title": "Multiple failed logons to a server", "host": "SRV-FILE-01", "user": "svc_backup", "status": "new",
+     "description": "12 failed logons (event 4625) for svc_backup on SRV-FILE-01 from 192.0.2.14 between 01:10Z and 01:14Z, then one success (event 4624) at 01:15Z.", "indicators": ["192.0.2.14"]},
+    {"id": "ALT-1004", "time": "2026-11-06T13:05:00Z", "source": "Proxy", "severity": "medium", "title": "Connection to a newly registered domain", "host": "WS-MED-003", "user": "t.baptiste", "status": "new",
+     "description": "WS-MED-003 fetched https://portal-benefits-login.example/ (domain registered 3 days ago) after the user opened a link in an email titled 'Action required: benefits enrollment'.", "indicators": ["portal-benefits-login.example"]},
+    {"id": "ALT-1005", "time": "2026-11-04T15:20:00Z", "source": "Endpoint protection", "severity": "high", "title": "Credential-dumping tool detected and quarantined", "host": "WS-G6-021", "user": "m.reyes", "status": "new",
+     "description": "Endpoint protection quarantined C:\\Tools\\audit\\pwaudit.exe (signature HackTool/CredDump) on WS-G6-021 at 15:20Z on 2026-11-04.", "indicators": ["pwaudit.exe"]},
+    {"id": "ALT-1006", "time": "2026-11-06T06:00:00Z", "source": "DNS analytics", "severity": "informational", "title": "DNS query volume anomaly", "host": "SRV-WEB-02", "user": null, "status": "new",
+     "description": "198.51.100.22 made 1,140 DNS queries in 24 hours against a 30-day baseline of 0.", "indicators": ["198.51.100.22"]}
+  ],
+  "logs": {
+    "auth": [
+      {"time": "2026-11-04T14:05:12Z", "host": "WS-G6-021", "user": "m.reyes", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": "Workday logon."},
+      {"time": "2026-11-05T07:58:40Z", "host": "WS-G3-014", "user": "j.okafor", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": "Workday logon."},
+      {"time": "2026-11-05T08:01:05Z", "host": "WS-G1-007", "user": "a.lindqvist", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": ""},
+      {"time": "2026-11-05T08:03:22Z", "host": "WS-MED-003", "user": "t.baptiste", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": ""},
+      {"time": "2026-11-05T17:02:10Z", "host": "WS-G3-014", "user": "j.okafor", "event": "logoff", "logon_type": "interactive", "result": "success", "src": "console", "detail": "End of day."},
+      {"time": "2026-11-05T22:41:03Z", "host": "VPN-GW-01", "user": "j.okafor", "event": "vpn_logon", "logon_type": "vpn", "result": "success", "src": "203.0.113.77", "detail": "MFA: not enrolled (exercise account). Assigned 192.0.2.214. Geolocation: Varenna."},
+      {"time": "2026-11-05T22:43:10Z", "host": "WS-G3-014", "user": "j.okafor", "event": "logon", "logon_type": "remote_interactive", "result": "success", "src": "192.0.2.214", "detail": "RDP from the VPN pool."},
+      {"time": "2026-11-06T01:10:21Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:10:41Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:11:02Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:11:23Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:11:44Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:12:05Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:12:26Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:12:47Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:13:08Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:13:29Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:13:50Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:14:11Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "failure", "src": "192.0.2.14", "detail": "Event 4625, bad password."},
+      {"time": "2026-11-06T01:15:02Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "success", "src": "192.0.2.14", "detail": "Event 4624."},
+      {"time": "2026-11-06T02:04:50Z", "host": "SRV-WEB-02", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "success", "src": "192.0.2.14", "detail": "Event 4624. Admin share (C$) access. This host is recorded as decommissioned."},
+      {"time": "2026-11-06T03:00:05Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "logon", "logon_type": "service", "result": "success", "src": "198.51.100.10", "detail": "Nightly backup job (30-day baseline: every night at 0300Z from the server itself)."},
+      {"time": "2026-11-06T08:02:33Z", "host": "WS-G3-014", "user": "j.okafor", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": "Workday logon."},
+      {"time": "2026-11-06T08:04:10Z", "host": "WS-MED-003", "user": "t.baptiste", "event": "logon", "logon_type": "interactive", "result": "success", "src": "console", "detail": ""}
+    ],
+    "dns": [
+      {"time": "2026-11-05T02:01:30Z", "host": "SRV-VSCAN-01", "query": "vulnfeed.ex-net-52.example", "answer": "198.51.100.35", "detail": "Signature update before the scheduled scan."},
+      {"time": "2026-11-05T08:00:12Z", "host": "WS-G3-014", "query": "mail.ex-net-52.example", "answer": "198.51.100.30", "detail": ""},
+      {"time": "2026-11-05T08:00:30Z", "host": "WS-G1-007", "query": "hr.ex-net-52.example", "answer": "198.51.100.31", "detail": ""},
+      {"time": "2026-11-05T22:55:12Z", "host": "WS-G3-014", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": "First query for this domain from any host."},
+      {"time": "2026-11-05T23:00:11Z", "host": "WS-G3-014", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": ""},
+      {"time": "2026-11-05T23:05:13Z", "host": "WS-G3-014", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": ""},
+      {"time": "2026-11-05T23:10:12Z", "host": "WS-G3-014", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": ""},
+      {"time": "2026-11-06T02:10:05Z", "host": "SRV-WEB-02", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": "First DNS query from this host in the 30-day baseline."},
+      {"time": "2026-11-06T02:15:04Z", "host": "SRV-WEB-02", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": ""},
+      {"time": "2026-11-06T02:20:06Z", "host": "SRV-WEB-02", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": ""},
+      {"time": "2026-11-06T13:04:58Z", "host": "WS-MED-003", "query": "portal-benefits-login.example", "answer": "203.0.113.201", "detail": ""},
+      {"time": "2026-11-06T13:55:10Z", "host": "WS-G3-014", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": "Repeats every 300 seconds since 22:55Z on 2026-11-05 (181 queries so far, continuing at the current time)."},
+      {"time": "2026-11-06T13:55:40Z", "host": "SRV-WEB-02", "query": "cdn-metrics.updatesvc.example", "answer": "203.0.113.154", "detail": "Repeats every 300 seconds since 02:10Z (142 queries so far, continuing at the current time)."}
+    ],
+    "proxy": [
+      {"time": "2026-11-05T08:05:11Z", "host": "WS-G1-007", "user": "a.lindqvist", "method": "GET", "url": "https://hr.ex-net-52.example/", "dest_ip": "198.51.100.31", "status": 200, "bytes_out": 1200, "bytes_in": 58000, "detail": ""},
+      {"time": "2026-11-05T22:56:02Z", "host": "WS-G3-014", "user": "j.okafor", "method": "GET", "url": "https://cdn-metrics.updatesvc.example/u/odsh", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 640, "bytes_in": 217088, "detail": "Downloaded a 212 KB binary (content-type application/octet-stream)."},
+      {"time": "2026-11-05T23:00:11Z", "host": "WS-G3-014", "user": "j.okafor", "method": "POST", "url": "https://cdn-metrics.updatesvc.example/api/v1/ping", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 312, "bytes_in": 96, "detail": ""},
+      {"time": "2026-11-05T23:05:13Z", "host": "WS-G3-014", "user": "j.okafor", "method": "POST", "url": "https://cdn-metrics.updatesvc.example/api/v1/ping", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 312, "bytes_in": 96, "detail": ""},
+      {"time": "2026-11-06T01:40:17Z", "host": "WS-G3-014", "user": "j.okafor", "method": "POST", "url": "https://cdn-metrics.updatesvc.example/api/v1/upload", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 48300000, "bytes_in": 120, "detail": "Single 48.3 MB upload."},
+      {"time": "2026-11-06T02:12:08Z", "host": "SRV-WEB-02", "user": "SYSTEM", "method": "POST", "url": "https://cdn-metrics.updatesvc.example/api/v1/ping", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 310, "bytes_in": 96, "detail": "Repeats every 300 seconds."},
+      {"time": "2026-11-06T13:05:02Z", "host": "WS-MED-003", "user": "t.baptiste", "method": "GET", "url": "https://portal-benefits-login.example/", "dest_ip": "203.0.113.201", "status": 200, "bytes_out": 850, "bytes_in": 41200, "detail": "Page loaded. No POST to this domain was seen before or after."},
+      {"time": "2026-11-06T13:05:40Z", "host": "WS-MED-003", "user": "t.baptiste", "method": "GET", "url": "https://portal-benefits-login.example/favicon.ico", "dest_ip": "203.0.113.201", "status": 404, "bytes_out": 420, "bytes_in": 300, "detail": ""},
+      {"time": "2026-11-06T13:55:12Z", "host": "WS-G3-014", "user": "j.okafor", "method": "POST", "url": "https://cdn-metrics.updatesvc.example/api/v1/ping", "dest_ip": "203.0.113.154", "status": 200, "bytes_out": 312, "bytes_in": 96, "detail": "Beacon continues every 300 seconds through the current time."}
+    ],
+    "endpoint": [
+      {"time": "2026-11-04T15:20:02Z", "host": "WS-G6-021", "user": "m.reyes", "event": "quarantine", "process": "pwaudit.exe", "parent": "cmd.exe", "path": "C:\\Tools\\audit\\pwaudit.exe", "detail": "Signature HackTool/CredDump. Quarantined. No further detections on this host."},
+      {"time": "2026-11-05T02:02:00Z", "host": "SRV-VSCAN-01", "user": "scanner", "event": "process_start", "process": "scanner-engine", "parent": "cron", "path": "/opt/scanner/bin/scanner-engine", "detail": "Scheduled scan job 'weekly-enclave' started; completed 02:48Z."},
+      {"time": "2026-11-05T22:50:15Z", "host": "WS-G3-014", "user": "j.okafor", "event": "process_start", "process": "powershell.exe", "parent": "explorer.exe", "command_line": "powershell.exe -w hidden -enc <base64>", "detail": "Encoded command decodes to a download cradle for https://cdn-metrics.updatesvc.example/u/odsh. Session: RDP from 192.0.2.214."},
+      {"time": "2026-11-05T22:52:30Z", "host": "WS-G3-014", "user": "j.okafor", "event": "process_start", "process": "schtasks.exe", "parent": "powershell.exe", "command_line": "schtasks.exe /Create /TN OneDriveSyncHelper /TR C:\\Users\\Public\\odsh.exe /SC MINUTE /MO 5 /F", "detail": "New scheduled task."},
+      {"time": "2026-11-05T22:56:40Z", "host": "WS-G3-014", "user": "j.okafor", "event": "file_create", "process": "powershell.exe", "parent": "explorer.exe", "path": "C:\\Users\\Public\\odsh.exe", "detail": "212 KB, unsigned. SHA-256 (fictional): 7c1e0f2a9b...e41d."},
+      {"time": "2026-11-06T01:09:50Z", "host": "WS-G3-014", "user": "j.okafor", "event": "process_start", "process": "powershell.exe", "parent": "odsh.exe", "command_line": "powershell.exe -enc <base64>", "detail": "Decodes to a loop trying passwords for svc_backup against \\\\SRV-FILE-01\\PLANS."},
+      {"time": "2026-11-06T01:22:14Z", "host": "SRV-FILE-01", "user": "svc_backup", "event": "process_start", "process": "7z.exe", "parent": "wmiprvse.exe", "command_line": "7z.exe a -p -mhe=on C:\\Windows\\Temp\\bk_2026.7z \\\\SRV-FILE-01\\PLANS\\OPORD_26-04_DRAFT\\*", "detail": "Launched remotely over WMI from 192.0.2.14. Archive 48.1 MB. The folder holds the draft division order and its annexes."},
+      {"time": "2026-11-06T01:38:05Z", "host": "WS-G3-014", "user": "j.okafor", "event": "file_create", "process": "odsh.exe", "parent": "svchost.exe", "path": "C:\\Users\\Public\\bk_2026.7z", "detail": "Copied from \\\\SRV-FILE-01\\C$\\Windows\\Temp\\bk_2026.7z (48.1 MB)."},
+      {"time": "2026-11-06T02:05:12Z", "host": "WS-G3-014", "user": "j.okafor", "event": "process_start", "process": "wmic.exe", "parent": "odsh.exe", "command_line": "wmic /node:198.51.100.22 /user:svc_backup process call create C:\\Windows\\Temp\\odsh.exe", "detail": "Remote process creation on SRV-WEB-02."},
+      {"time": "2026-11-06T02:09:30Z", "host": "SRV-WEB-02", "user": "SYSTEM", "event": "service_install", "process": "services.exe", "parent": "wininit.exe", "path": "C:\\Windows\\Temp\\odsh.exe", "detail": "Service 'UpdateSvcHelper' installed. The endpoint agent on this host last checked in on 2026-10-14; the host is recorded as powered off since 2026-10-15 (CHG-0398)."},
+      {"time": "2026-11-06T13:05:00Z", "host": "WS-MED-003", "user": "t.baptiste", "event": "process_start", "process": "msedge.exe", "parent": "outlook.exe", "command_line": "msedge.exe https://portal-benefits-login.example/", "detail": "No child processes, downloads or file writes followed in the next hour."}
+    ]
+  },
+  "intel": [
+    {"id": "INT-26-029", "time": "2026-11-01T12:00:00Z", "title": "Benefits-enrollment phishing lure", "source": "Division G-2 cyber (fictional)",
+     "summary": "Low-sophistication credential phishing against staff mailboxes. Emails titled 'Action required: benefits enrollment' link to look-alike portals on freshly registered domains matching portal-benefits-*.example. The pages only harvest credentials; no malware has been observed.",
+     "indicators": [{"type": "domain_pattern", "value": "portal-benefits-*.example", "context": "credential harvesting page"}],
+     "recommended_actions": ["Block the domain pattern at the proxy.", "For users who visited a page, check the proxy log for a POST to the domain; reset the password only if credentials were submitted.", "Report the lure to users; no host containment is needed for a page view alone."]},
+    {"id": "INT-26-031", "time": "2026-11-06T08:00:00Z", "title": "CINDER KESTREL activity against exercise networks", "source": "Regional CPT (fictional)",
+     "summary": "A Varenna-aligned actor tracked as CINDER KESTREL is using stolen VPN credentials to reach exercise enclaves, sourcing logons from 203.0.113.0/24. After an RDP session it drops the ODSH implant (odsh.exe in C:\\Users\\Public) persisted as a scheduled task named OneDriveSyncHelper, beacons over HTTPS to hosts under updatesvc.example (currently cdn-metrics.updatesvc.example at 203.0.113.154, POST /api/v1/ping every 5 minutes), sprays service-account passwords against file servers, stages data as password-protected 7z archives in Windows\\Temp, moves laterally over WMI, and exfiltrates with a single POST to /api/v1/upload.",
+     "indicators": [
+       {"type": "ipv4", "value": "203.0.113.77", "context": "VPN logon source"},
+       {"type": "ipv4", "value": "203.0.113.154", "context": "C2 and exfiltration server"},
+       {"type": "domain", "value": "cdn-metrics.updatesvc.example", "context": "C2 domain"},
+       {"type": "filename", "value": "odsh.exe", "context": "ODSH implant"},
+       {"type": "scheduled_task", "value": "OneDriveSyncHelper", "context": "persistence"},
+       {"type": "url_path", "value": "/api/v1/upload", "context": "exfiltration"}
+     ],
+     "recommended_actions": ["Search DNS and proxy logs for updatesvc.example and 203.0.113.154.", "Hunt for the scheduled task OneDriveSyncHelper and odsh.exe on every host.", "Block the domain and the IP; isolate beaconing hosts and preserve memory first.", "Disable or reset every account that logged on from 203.0.113.0/24, and every service account sprayed afterwards."]}
+  ],
+  "change_records": [
+    {"id": "CHG-0398", "title": "Decommission SRV-WEB-02 (legacy intranet)", "system": "SRV-WEB-02", "window_start": "2026-10-15T08:00:00Z", "window_end": "2026-10-15T12:00:00Z", "approved_by": "G-6", "status": "Complete: host powered off. Follow-up open: firewall rule cleanup, DNS cleanup and physical removal not yet done."},
+    {"id": "CHG-0412", "title": "Weekly authenticated vulnerability scan", "system": "SRV-VSCAN-01", "window_start": "every Thursday 02:00Z", "window_end": "every Thursday 04:00Z", "approved_by": "G-6", "status": "Standing. Scans 192.0.2.0/24 and 198.51.100.0/24 from 198.51.100.40; IDS alerts during the window are expected."},
+    {"id": "CHG-0415", "title": "Credential-hygiene audit on WS-G6-021", "system": "WS-G6-021", "window_start": "2026-11-04T14:00:00Z", "window_end": "2026-11-04T16:00:00Z", "approved_by": "G-6 cyber defense cell lead", "status": "Complete. Helpdesk ran the password-audit tool pwaudit.exe from C:\\Tools\\audit; no endpoint-protection exclusion was configured, so a HackTool detection was expected."}
+  ],
+  "playbook": {
+    "containment_options": ["isolate_host", "disable_account", "reset_credentials", "block_indicator", "preserve_evidence", "reimage_host", "escalate"],
+    "rules": [
+      "Preserve evidence (memory and disk capture) before reimaging or powering off a confirmed host.",
+      "Crown-jewel servers (SRV-FILE-01, SRV-DC-01) are not isolated or taken offline without Division G-6 approval: recommend the action and escalate.",
+      "Confirmed incidents are reported to the Division G-6 within 1 hour. Confirmed data loss is also reported to the CPT and, for PLANS data, to the G-3.",
+      "Before closing an alert as a false positive, cite the change record or baseline that explains it.",
+      "Do not notify an affected user before their account is contained."
+    ]
+  }
+}

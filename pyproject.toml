@@ -1,0 +1,7 @@
+[project]
+name = "aef-cyber"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "agentenv-framework[explorer]>=0.9.1335",
+]

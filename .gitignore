@@ -1,0 +1,11 @@
+# Python environment (recreate with: uv sync)
+.venv/
+__pycache__/
+*.py[cod]
+
+# Credentials: SGP_API_KEY and SGP_ACCOUNT_ID live in the shell, never in the repo
+.env
+.env.*
+
+# macOS
+.DS_Store
