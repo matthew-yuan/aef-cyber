@@ -1,0 +1,6 @@
+[
+  {"id": "lab", "type": "deploy_env", "env_id": "lab", "sandbox_type": "local", "depends_on": []},
+  {"id": "seed", "type": "load_artifact", "env_id": "lab", "artifact_id": "lab-sample", "depends_on": [{"task_step_id": "lab"}]},
+  {"id": "check", "type": "env_outcome_verifier", "env_id": "lab", "file_artifact_id": "check_lab",
+   "verifier_id": "lab-smoke", "depends_on": [{"task_step_id": "seed"}]}
+]

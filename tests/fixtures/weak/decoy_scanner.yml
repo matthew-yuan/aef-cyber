@@ -1,0 +1,6 @@
+title: "Any scanner engine start (decoy: flags the authorized scanner)"
+logsource: {service: endpoint}
+detection:
+  selection:
+    process: scanner-engine
+  condition: selection

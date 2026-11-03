@@ -1,0 +1,3 @@
+# This folder is a Docker build context shipped as a file universe (not an image the bundle builds):
+# run_docker_container builds it inside a VM-mode sandbox and starts it with network "none".
+type = "file_artifact_universe"

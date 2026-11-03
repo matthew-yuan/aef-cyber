@@ -1,0 +1,6 @@
+title: "Every successful logon (decoy: no precision)"
+logsource: {service: auth}
+detection:
+  selection:
+    result: success
+  condition: selection

@@ -5,3 +5,11 @@ requires-python = ">=3.12"
 dependencies = [
     "agentenv-framework[explorer]>=0.9.1335",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
