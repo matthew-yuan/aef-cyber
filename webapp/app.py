@@ -63,7 +63,6 @@ class Launch(BaseModel):
 class BatchLaunch(BaseModel):
     pipelines: list[str] = Field(min_length=1, max_length=7)
     k: int = Field(default=1, ge=1, le=20, strict=True)
-    concurrency: int = Field(default=2, ge=1, le=4, strict=True)
     model: str = ""
     judge_model: str = ""
     success_threshold: float = Field(default=.8, ge=0, le=1)
@@ -104,7 +103,8 @@ def launch_batch(body: BatchLaunch):
         else:
             defaults = model_config()
             model, judge = defaults["analyst_model"], defaults["judge_model"]
-        return create_batch(body.pipelines, body.k, body.concurrency, model, judge, body.success_threshold,
+        # Scheduling is internal; users choose what to evaluate, not worker counts.
+        return create_batch(body.pipelines, body.k, 2, model, judge, body.success_threshold,
                             state=STATE, root=ROOT)
 
 

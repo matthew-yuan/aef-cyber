@@ -22,10 +22,11 @@ def client(tmp_path, monkeypatch):
 
 
 def test_batch_launch_creates_k_children_and_blocks_competing_launches(client, tmp_path):
-    response = client.post("/api/batches", json={"pipelines": ["triage", "report"], "k": 2, "concurrency": 2})
+    response = client.post("/api/batches", json={"pipelines": ["triage", "report"], "k": 2})
     assert response.status_code == 201
     batch = response.json()
     assert len(batch["run_ids"]) == len(set(batch["run_ids"])) == 4
+    assert batch["concurrency"] == 2  # internal scheduling, not a user parameter
     children = [read(tmp_path / i) for i in batch["run_ids"]]
     assert [(c["pipeline"], c["trial"]) for c in children] == [("triage", 1), ("report", 1), ("triage", 2), ("report", 2)]
     assert client.post("/api/batches", json={"pipelines": ["smoke"]}).status_code == 409
@@ -39,7 +40,6 @@ def test_batch_launch_creates_k_children_and_blocks_competing_launches(client, t
     {"pipelines": []}, {"pipelines": ["missing"]}, {"pipelines": ["v1", "v1"]},
     {"pipelines": ["smoke"], "k": 0}, {"pipelines": ["smoke"], "k": 21},
     {"pipelines": ["smoke"], "k": True}, {"pipelines": ["smoke"], "k": 1.1},
-    {"pipelines": ["smoke"], "concurrency": 0}, {"pipelines": ["smoke"], "concurrency": 5},
     {"pipelines": ["v1", "v2", "v3"], "k": 20}, {"pipelines": ["smoke"], "success_threshold": 1.1},
 ])
 def test_invalid_batch_bounds(client, body):

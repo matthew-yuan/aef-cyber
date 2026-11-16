@@ -16,6 +16,7 @@ function notice(text) { $('notice').textContent = text; $('notice').style.displa
 let graphPreview = false;
 let modelsReady = false, modelConfig = {};
 function updateStartButton() {
+  if (typeof updateLaunchOptions === 'function') { updateLaunchOptions(); return; }
   const needsModel = workflows.find(p => p.id === $('pipeline').value)?.model;
   $('start').disabled = records.some(r => ['queued','running'].includes(r.status)) || (needsModel && !modelsReady);
 }
@@ -66,7 +67,7 @@ function renderRuns() {
   $('complete').textContent = records.filter(r => r.status === 'completed').length;
   $('failed').textContent = records.filter(r => ['failed','interrupted'].includes(r.status)).length;
   updateStartButton();
-  if (!records.length) return;
+  if (!records.length) { $('runs').innerHTML='<p class="empty">No runs yet. Start a scenario from the Run scenario tab.</p>'; return; }
   $('runs').innerHTML = records.map(r => `<div class="run ${selected === r.id ? 'selected' : ''}" data-id="${r.id}" tabindex="0" role="button"><span class="badge ${escape(r.status)}">${escape(r.status)}</span><strong>${escape(r.pipeline.toUpperCase())}</strong><p>${escape(r.name)}</p><small>${new Date(r.created_at).toLocaleString()} · ${r.id.slice(0,8)}</small></div>`).join('');
   document.querySelectorAll('.run').forEach(el => { const select = () => { selected = el.dataset.id; graphPreview = false; fileText = ''; openFile = ''; renderRuns(); refreshDetail(); }; el.onclick = select; el.onkeydown = e => { if (e.key === 'Enter') select(); }; });
 }
@@ -86,7 +87,7 @@ async function refreshDetail() {
   const viewerScroll = previousViewer?.scrollTop || 0;
   const previousViewerKey = previousViewer?.dataset.fileKey;
   const pageScroll = window.scrollY;
-  if (!graphPreview) renderDAG(r.workflow || [], r.steps, r.status, r.name);
+  if (!graphPreview && (typeof activeTab === 'undefined' || activeTab === 'history')) renderDAG(r.workflow || [], r.steps, r.status, r.name);
   const steps = Object.entries(r.steps || {}).sort((a,b) => a[1].number-b[1].number);
   const done = steps.filter(([,s]) => s.status === 'completed').length;
   const percent = r.total_steps ? Math.round(done/r.total_steps*100) : 0;
@@ -138,8 +139,7 @@ async function refreshDetail() {
   $('detail').insertAdjacentHTML('afterbegin', activity);
   if ($('checks')) $('checks').onclick = () => { openFile = 'Verification details'; fileHTML=''; fileText = JSON.stringify(r.verifications,null,2); refreshDetail(); };
 }
-async function refresh() { try { records = await api('/api/runs'); if (!selected && records.length) { selected=records[0].id; graphPreview=false; } renderRuns(); await refreshDetail(); } catch(e){notice(e.message);} }
-$('launch-form').onsubmit = async e => { e.preventDefault(); if ($('start').disabled) return; $('start').disabled=true; notice(''); try {const r=await api('/api/runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pipeline:$('pipeline').value,model:$('model').value,judge_model:$('judge-model').value})});selected=r.id;graphPreview=false;openFile='';fileText='';await refresh();}catch(e){notice(e.message);updateStartButton();} };
+async function refresh() { try { records = await api('/api/runs'); if (!selected && records.length) { selected=records[0].id; if(typeof activeTab==='undefined'||activeTab==='history')graphPreview=false; } renderRuns(); await refreshDetail(); } catch(e){notice(e.message);} }
 $('pipeline').onchange=workflowChanged;
 $('refresh-models').onclick=loadModels;
 $('dag-preview').onclick = () => { graphPreview = true; previewDAG(); };

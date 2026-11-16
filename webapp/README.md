@@ -2,11 +2,12 @@
 
 ## Batch evaluations and repeated trials
 
-Select multiple scenarios in **Batch evaluations & reliability**, set **Trials per
-scenario (k)** (1–20), **Parallel trials** (1–4, default 2), and a success threshold
-(default 0.80). Maximum 40 trials per batch. The selected analyst/judge dropdowns
-apply to every model-based trial. Children appear in normal run history with
-individual Inputs, outputs and logs.
+The **Run scenario** tab has one launch form. Optional settings enable repeated
+trials (k=1–20, default 3 when enabled) and a success threshold (default 0.80).
+You can also include additional scenarios in the same launch. Maximum 40 trials.
+The app schedules work automatically; there is no worker-count control.
+**History & results** holds past runs, trial-group summaries, Inputs, reports and logs.
+Successful launches open that tab automatically; switching tabs preserves settings.
 
 Each batch builds once in a frozen source snapshot, pins external env/data
 versions, and records an input SHA-256. Each trial gets a separate bundle namespace,
@@ -14,7 +15,7 @@ fresh deployments and instance-derived snapshot IDs. Separate worker processes
 avoid model-setting/build races and AEF signal-handler conflicts. One active batch
 or single run owns the dashboard launch slot; the batch limits concurrent trials,
 while AEF still parallelizes independent DAG steps inside each trial. On the
-2-CPU/4-GB Docker runtime, start with concurrency 2. Closing the page does not stop
+2-CPU/4-GB Docker runtime, scheduling uses two trial workers internally. Closing the page does not stop
 execution; crashed coordinators/workers are marked interrupted, not passed.
 
 Reliability is successful finished trials / all finished trials, including errors
@@ -27,7 +28,7 @@ models, budgets and concurrency fixed for comparisons. Runtime agents are unchan
 coding subagents help independent implementation/review, not the evaluated answers.
 
 API: `POST /api/batches` with
-`{"pipelines":["triage","report"],"k":2,"concurrency":2,"success_threshold":0.8}`
+`{"pipelines":["triage","report"],"k":2,"success_threshold":0.8}`
 and optional `model` / `judge_model`; `GET /api/batches` returns grouped summaries.
 Batch manifests/logs live in `.dashboard/batches/<id>/`. Do not edit snapshots
 while running. Background runs preserve their usual `runs/<scenario>/...` exports.
