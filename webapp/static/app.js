@@ -62,13 +62,15 @@ async function previewDAG() {
 }
 function workflowChanged() { const p = workflows.find(p => p.id === $('pipeline').value); $('pipeline-description').textContent = p.description; $('model-field').style.display = p.model ? 'flex' : 'none'; $('judge-field').style.display = p.model ? 'flex' : 'none'; if($('scenario-rubric'))$('scenario-rubric').href=`/api/pipelines/${p.id}/rubric`; updateStartButton(); graphPreview = true; previewDAG(); }
 function renderRuns() {
-  $('total').textContent = records.length;
-  $('active').textContent = records.filter(r => ['queued','running'].includes(r.status)).length;
-  $('complete').textContent = records.filter(r => r.status === 'completed').length;
-  $('failed').textContent = records.filter(r => ['failed','interrupted'].includes(r.status)).length;
+  const visible = typeof historyFilters === 'function' ? filterHistory(records,historyFilters()) : records;
+  $('total').textContent = visible.length;
+  $('active').textContent = visible.filter(r => ['queued','running'].includes(r.status)).length;
+  $('complete').textContent = visible.filter(r => r.status === 'completed').length;
+  $('failed').textContent = visible.filter(r => ['failed','interrupted'].includes(r.status)).length;
+  if($('history-filter-count'))$('history-filter-count').textContent=`Showing ${visible.length} of ${records.length} runs. Dates use start time, or creation time for queued runs. Completed is execution status, not a passing grade.`;
   updateStartButton();
-  if (!records.length) { $('runs').innerHTML='<p class="empty">No runs yet. Start a scenario from the Run scenario tab.</p>'; return; }
-  $('runs').innerHTML = records.map(r => `<div class="run ${selected === r.id ? 'selected' : ''}" data-id="${r.id}" tabindex="0" role="button"><span class="badge ${escape(r.status)}">${escape(r.status)}</span><strong>${escape(r.pipeline.toUpperCase())}</strong><p>${escape(r.name)}</p><small>${new Date(r.created_at).toLocaleString()} · ${r.id.slice(0,8)}</small></div>`).join('');
+  if (!visible.length) { $('runs').innerHTML=`<p class="empty">${records.length?'No runs match these filters.':'No runs yet. Start a scenario from the Run scenario tab.'}</p>`; return; }
+  $('runs').innerHTML = visible.map(r => `<div class="run ${selected === r.id ? 'selected' : ''}" data-id="${r.id}" tabindex="0" role="button"><span class="badge ${escape(r.status)}">${escape(r.status)}</span><strong>${escape(r.pipeline.toUpperCase())}</strong><p>${escape(r.name)}</p><small>${new Date(r.started_at||r.created_at).toLocaleString()} · ${r.id.slice(0,8)}</small></div>`).join('');
   document.querySelectorAll('.run').forEach(el => { const select = () => { selected = el.dataset.id; graphPreview = false; fileText = ''; openFile = ''; renderRuns(); refreshDetail(); }; el.onclick = select; el.onkeydown = e => { if (e.key === 'Enter') select(); }; });
 }
 async function refreshDetail() {

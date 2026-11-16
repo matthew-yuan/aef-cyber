@@ -1,6 +1,7 @@
 /* One launch form; repetitions are an optional extension of the selected scenario. */
 var launchBusy = false, batchActive = false;
 var activeTab = 'launch';
+var historyBatches = [];
 const additionalScenarios = () => [...document.querySelectorAll('#additional-scenarios input:checked')].map(el=>el.value);
 const launchScenarios = () => [...new Set([$('pipeline').value, ...additionalScenarios()])].filter(Boolean);
 function showTab(tab) {
@@ -71,7 +72,15 @@ $('launch-form').onsubmit = async event => {
 async function refreshBatches() {
   try {
     const batches = await api('/api/batches');
+    historyBatches = batches;
     batchActive = batches.some(b=>['queued','running'].includes(b.status));
+    renderBatchHistory();
+    updateLaunchOptions();
+  } catch(error){$('batch-error').textContent=error.message;}
+}
+function renderBatchHistory() {
+    const filters = typeof historyFilters === 'function' ? historyFilters() : {};
+    const batches = typeof filterHistory === 'function' ? filterHistory(historyBatches,filters,true) : historyBatches;
     const opened = new Set([...document.querySelectorAll('.batch-summary[open]')].map(el=>el.dataset.batchId));
     $('batch-error').textContent='';
     $('batch-summaries').innerHTML = batches.length ? batches.map(batch=>`<details class="batch-summary" data-batch-id="${escape(batch.id)}" ${opened.has(batch.id)?'open':''}>
@@ -79,18 +88,17 @@ async function refreshBatches() {
       ${batch.error?`<p class="error">${escape(batch.error)}</p>`:''}
       <p>Success threshold: ${batch.success_threshold}. Execution completion and evaluation success are separate.</p>
       <div class="batch-table"><table><thead><tr><th>Scenario</th><th>Finished</th><th>Successful</th><th>Success rate</th><th>All trials passed</th></tr></thead><tbody>
-      ${batch.scenarios.map(s=>`<tr><td>${escape(workflows.find(p=>p.id===s.pipeline)?.name||s.pipeline)}</td><td>${s.completed}/${s.total}</td><td>${s.successes}${s.failed?` (${s.failed} errors)`:''}</td><td>${s.success_rate===null?'—':`${Math.round(s.success_rate*100)}%`}${s.confidence_interval_95?`<small>95% interval ${Math.round(s.confidence_interval_95[0]*100)}–${Math.round(s.confidence_interval_95[1]*100)}%</small>`:''}</td><td>${s.all_trials_passed===null?'Pending':s.all_trials_passed?'Yes':'No'}</td></tr>`).join('')}
-      </tbody></table></div><button class="secondary" type="button" data-group="${escape(batch.id)}">View these runs</button></details>`).join('') : '<p>No trial groups yet.</p>';
+      ${batch.scenarios.filter(s=>!filters.scenario||s.pipeline===filters.scenario).map(s=>`<tr><td>${escape(workflows.find(p=>p.id===s.pipeline)?.name||s.pipeline)}</td><td>${s.completed}/${s.total}</td><td>${s.successes}${s.failed?` (${s.failed} errors)`:''}</td><td>${s.success_rate===null?'—':`${Math.round(s.success_rate*100)}%`}${s.confidence_interval_95?`<small>95% interval ${Math.round(s.confidence_interval_95[0]*100)}–${Math.round(s.confidence_interval_95[1]*100)}%</small>`:''}</td><td>${s.all_trials_passed===null?'Pending':s.all_trials_passed?'Yes':'No'}</td></tr>`).join('')}
+      </tbody></table></div><button class="secondary" type="button" data-group="${escape(batch.id)}">View these runs</button></details>`).join('') : `<p>${historyBatches.length?'No trial groups match these filters.':'No trial groups yet.'}</p>`;
     document.querySelectorAll('[data-group]').forEach(button=>button.onclick=()=>{
       const batch=batches.find(b=>b.id===button.dataset.group);
-      const match=records.find(r=>batch.run_ids.includes(r.id));
+      const match=filterHistory(records,filters).find(r=>batch.run_ids.includes(r.id));
       if(match){selected=match.id;detailSignature='';openFile='';fileText='';fileHTML='';renderRuns();refreshDetail().catch(e=>notice(e.message));}
     });
-    updateLaunchOptions();
-  } catch(error){$('batch-error').textContent=error.message;}
 }
 (async()=>{
   const scenarios=await api('/api/pipelines');
+  if(typeof populateHistoryScenarios==='function')populateHistoryScenarios(scenarios);
   $('additional-scenarios').innerHTML=scenarios.map(p=>`<label><input type="checkbox" value="${escape(p.id)}">${escape(p.name)}</label>`).join('');
   $('additional-scenarios').onchange=updateLaunchOptions;
   document.querySelectorAll('#additional-scenarios label').forEach(label=>{

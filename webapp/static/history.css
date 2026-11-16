@@ -1,0 +1,2 @@
+.history-filters{padding:18px;margin-bottom:18px}#history-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;align-items:end}#history-filters label{min-width:0}#history-filters input,#history-filters select{width:100%;max-width:100%;min-width:0}#history-filter-count{font-size:12px;margin-top:12px}#history-filter-error{color:#f4bd7b;font-size:12px}.history-filters button{min-height:40px}
+@media(max-width:600px){#history-filters{grid-template-columns:minmax(0,1fr)}.history-filters{padding:14px}}

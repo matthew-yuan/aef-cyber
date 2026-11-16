@@ -9,6 +9,14 @@ The app schedules work automatically; there is no worker-count control.
 **History & results** holds past runs, trial-group summaries, Inputs, reports and logs.
 Successful launches open that tab automatically; switching tabs preserves settings.
 
+History filters apply to run cards, counts and trial groups: scenario, execution
+status, local start-time range, model/name/ID search, single versus grouped runs,
+and newest/oldest ordering. Queued runs use their creation time. Filters persist
+across polling and page reloads in the current browser tab; Clear filters resets
+them. A scenario filter shows matching rows inside multi-scenario groups. The
+currently open report stays available even if its run is filtered out. Completed
+means execution finished, not that the evaluation passed.
+
 Each batch builds once in a frozen source snapshot, pins external env/data
 versions, and records an input SHA-256. Each trial gets a separate bundle namespace,
 fresh deployments and instance-derived snapshot IDs. Separate worker processes
