@@ -50,7 +50,7 @@ def test_real_gpt4o_miss_fails_and_gpt5_complete_scope_passes():
         assert len(gates) == 3
         assert assess(1, rows)["score"] == expected
         positive = [row for row in rows if row["weight"] > 0]
-        assert len(positive) == 31
+        assert len(positive) == 37
 
 
 def test_historical_regrade_is_idempotent_and_preserves_scores(tmp_path):

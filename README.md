@@ -184,6 +184,17 @@ uv run python pipelines/v2-artifacts/export_run.py "<instance id>"
 
 ## Known limits
 
+### Action-backed grading
+
+All model judges receive full tool-call trajectories and a trusted server-audit
+summary captured before accepted submission. Required submissions must actually
+persist; absent/rejected products force a zero aggregate. Failed reads and empty
+queries do not count as investigation. Evidence requires complete page coverage.
+v2/v3 and focused rules hand the lab snapshot to the scorebox: 20% of execution
+reward requires a successful test of the exact submitted bytes before acceptance.
+Each judge now scores verified actions and unsupported completion claims explicitly.
+See [workflow and scenario audit](docs/action-evidence-workflow.md).
+
 ### Critical compromise grading
 
 Policy `compromise-gates-v1` requires the submitted baseline report to identify all

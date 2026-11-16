@@ -39,6 +39,8 @@ def focused(kind):
                                 "Use lab_test_rule to test and refine each rule, then submit each via soc_submit_artifact(kind='sigma_rule'). "
                                 "Use ATT&CK tags and behavior-based logic. Submit rules only; no hunt script, IOC extractor, triage or report is required.")
     steps.append(generation)
+    evidence = base._load(base.V1 / "build.py").evidence_step(phase)
+    steps.append(evidence)
     snapshot = source["snap-final"]
     snapshot["depends_on"] = base.dep(phase)
     steps.append(snapshot)
@@ -49,8 +51,18 @@ def focused(kind):
     steps.append(judge)
     verifiers = [judge["id"]]
     if kind == "rules":
-        steps.extend(source[k] for k in ("scorebox-vm", "scorebox-ctr", "handoff", "exec-tests"))
+        lab_snapshot = source["snap-lab"]
+        lab_snapshot["depends_on"] = base.dep(phase)
+        steps.append(lab_snapshot)
+        steps.extend(source[k] for k in ("scorebox-vm", "scorebox-ctr", "handoff", "handoff-lab", "exec-tests"))
         steps[-1]["command"] += " --only sigma"
+        judge["depends_on"] = base.dep(phase, "exec-tests", f"evidence-{phase}")
+        judge["context_facts_for_judge"] = {**base._load(base.V1 / "build.py").evidence_facts(phase),
+            "Trusted execution and lab testing score": "verifications.exec-tests.score",
+            "Exact submitted artifact test evidence": "verifications.exec-tests.stdout_head"}
+        # Its new dependency appears earlier in the serialized DAG.
+        steps.remove(judge)
+        steps.append(judge)
         verifiers.append("exec-tests")
     else:
         facts = source["facts"]
@@ -65,6 +77,8 @@ def focused(kind):
 def main():
     for kind in ("rules", "triage", "report"):
         bundle = HERE / kind
+        shutil.copytree(REPO / "pipelines/shared/action_evidence", bundle / "artifacts/action_evidence", dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns("__pycache__"))
         (bundle / "tasks").mkdir(parents=True, exist_ok=True)
         (bundle / "tasks/task.json").write_text(json.dumps(focused(kind), indent=2) + "\n")
         if kind == "rules":
@@ -74,7 +88,7 @@ def main():
             text = (base.HERE / "soc-eval/artifacts/check_facts/verify.py").read_text()
             text = text.replace("def score(state: dict)", "def baseline_score(state: dict)")
             prefixes = '("triage-", "process-")' if kind == "triage" else '("report-", "contain-")'
-            text += '\n\ndef score(state):\n    rows = [r for r in baseline_score(state) if r["id"].startswith(' + prefixes + ')]\n    for row in rows:\n        row["weight"] = 1.0 / len(rows)\n    return rows\n'
+            text += '\n\ndef score(state):\n    rows = [r for r in baseline_score(state) if r["id"].startswith(' + prefixes + ')]\n    positive = [r for r in rows if r["weight"] > 0]\n    for row in positive:\n        row["weight"] = 1.0 / len(positive)\n    return rows\n'
             path = bundle / "artifacts/check_facts/verify.py"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)

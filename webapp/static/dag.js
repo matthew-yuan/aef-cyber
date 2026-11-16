@@ -20,6 +20,7 @@ function phaseOf(step) {
   if (id.startsWith('soc-') || id.startsWith('lab-') || id.startsWith('scorebox-')) return 'setup';
   if (id === 'score') return 'score';
   if (id === 'issue-update') return 'update';
+  if (id.startsWith('evidence-')) return id === 'evidence-revision' ? 'review' : 'baseline';
   if (['revision-checks','judge-revision'].includes(id)) return 'review';
   if (['revision','snap-revised'].includes(id)) return 'revision';
   if (['triage','snap-triage'].includes(id)) return 'triage';

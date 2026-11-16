@@ -46,6 +46,12 @@ def scorecard(title, verifications):
                 (r.get("id", "Check").replace("-", " "), "PASS" if r.get("result") else "FAIL",
                  r.get("description") or r.get("message") or "No description recorded") for r in rows])
         if box:
+            lab = box.get("lab_testing")
+            if lab:
+                lines += ["### Verified lab use", "", "Exact submitted bytes require a successful lab test before acceptance.", ""]
+                lines += table(["Artifact", "Kind", "Test verified"], [
+                    (a["name"], a["kind"], "PASS" if a["tested"] else "FAIL — missing, failed, late or different bytes")
+                    for a in lab.get("artifacts", [])])
             lines += ["### Isolation checks", ""] + table(["Check", "Result", "Observation"], [
                 (r["id"], "PASS" if r["result"] else "FAIL", r.get("description", "")) for r in box.get("sandbox", [])])
             sigma = box.get("details", {}).get("sigma", {})
@@ -144,6 +150,9 @@ def rubric(steps, bundle):
                 lines += ["Additional checks: hunt runs/schema (0.05 each), hosts/precision ≥90%/recall ≥70% (0.10 each); "
                           "IOC extractor runs (0.05), at least 7/8 required indicators (0.10), and no forbidden indicators (0.10). "
                           "All execution weights sum to 1.0.", ""]
+            if "--require-lab" in step.get("command", ""):
+                lines += ["**Verified action credit:** execution reward = 80% functional tests + 20% successful exact-hash "
+                          "lab tests before accepted submission. Claims, screening, failed tests and tests of different bytes earn no lab credit.", ""]
     if bundle.name == "infrastructure":
         lines += ["## Functionality-check interpretation", "", "All SOC, lab-safety and golden-scorebox checks should pass. "
                   "These fixed fixtures check pipeline operation, not model reasoning.", ""]

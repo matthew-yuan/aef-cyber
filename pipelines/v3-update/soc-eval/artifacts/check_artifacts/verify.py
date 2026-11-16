@@ -65,7 +65,7 @@ def score(state: dict) -> list[dict]:
     report = state.get("evidence_report") or {}
     evidence_ids = [norm(e) for e in state.get("evidence_ids") or []]
     log = state.get("audit_log") or []
-    analyst = [e for e in log if e.get("role") == "analyst"] or log
+    analyst = [e for e in log if e.get("role") == "analyst"]
 
     stored = [(kind, name, rec) for kind, items in artifacts.items() if isinstance(items, dict) for name, rec in items.items() if isinstance(rec, dict)]
     receipts_ok = bool(stored) and all(
@@ -94,10 +94,20 @@ def score(state: dict) -> list[dict]:
         return next((i for i, e in enumerate(analyst) if pred(e)), None)
 
     first_submit = first_index(lambda e: e.get("tool") == "submit_artifact")
-    first_schema = first_index(lambda e: e.get("tool") == "get_log_schema")
+    first_schema = first_index(lambda e: e.get("tool") == "get_log_schema" and e.get("outcome") == "ok")
     report_idx = first_index(lambda e: e.get("tool") == "submit_evidence_report" and e.get("outcome") == "accepted")
     read_before_report = {norm(e.get("args", {}).get("evidence_id", "")) for e in (analyst[:report_idx] if report_idx is not None else analyst)
                           if e.get("tool") == "get_evidence" and e.get("outcome") == "ok"}
+
+    def fully_read(evidence_id):
+        pages = [e for e in analyst[:report_idx] if e.get("tool") == "get_evidence" and e.get("outcome") == "ok"
+                 and norm(e.get("args", {}).get("evidence_id", "")) == evidence_id and "total_chars" in e]
+        end = 0
+        for page in sorted(pages, key=lambda e: e.get("offset", 0)):
+            if page.get("offset", 0) > end:
+                break
+            end = max(end, page.get("offset", 0) + page.get("returned_chars", 0))
+        return bool(pages) and end >= max(p["total_chars"] for p in pages)
 
     checks = [
         ("art-sigma-accepted", "At least one Sigma rule was accepted", bool(artifacts.get("sigma_rule"))),
@@ -112,11 +122,21 @@ def score(state: dict) -> list[dict]:
         ("process-schema-before-code", "The analyst read the contract (get_log_schema) before its first artifact submission",
          first_schema is not None and (first_submit is None or first_schema < first_submit)),
         ("process-read-all-evidence", "The analyst read every evidence item before submitting the evidence report",
-         bool(evidence_ids) and set(evidence_ids) <= read_before_report),
+         report_idx is not None and bool(evidence_ids) and all(fully_read(e) for e in evidence_ids)),
         ("process-report-after-reading", "The evidence report was accepted after at least one evidence read", report_idx is not None and bool(read_before_report)),
     ]
+    accepted = {(e.get("args", {}).get("kind"), e.get("args", {}).get("name"), e.get("args", {}).get("sha256"))
+                for e in analyst if e.get("tool") == "submit_artifact" and e.get("outcome") == "accepted"}
+    checks += [("art-accepted-actions", "Every stored artifact has a matching accepted action and hash",
+                bool(stored) and all((kind, name, rec.get("sha256")) in accepted for kind, name, rec in stored))]
+    checks = [(i, d, ok and report_idx is not None if i.startswith("ev-") else ok) for i, d, ok in checks]
     weight = ARTIFACT_WEIGHT_TOTAL / len(checks)
     rows = [{"id": i, "result": bool(ok), "weight": weight, "description": d} for i, d, ok in checks]
+    rows += [{"id": "action-evidence-required", "result": report_idx is not None and bool(report), "weight": -12.0,
+              "description": "Required evidence report was actually accepted", "action_gate": True},
+             {"id": "action-artifacts-required", "result": all(bool(artifacts.get(k)) for k in ("sigma_rule", "hunt_script", "ioc_extractor"))
+              and bool(stored) and all((kind, name, rec.get("sha256")) in accepted for kind, name, rec in stored),
+              "weight": -12.0, "description": "All required artifact kinds persisted with accepted action hashes", "action_gate": True}]
     rows.append({"id": "artifact-attempts", "result": bool(stored), "weight": 0,
                  "description": f"{len(attempts)} submissions, {sum(rejections.values())} rejected; accepted: "
                                 f"{ {k: sorted(v) for k, v in artifacts.items() if v} }",

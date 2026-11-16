@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import hashlib
 import json
 import os
 import socket
@@ -58,6 +59,40 @@ def load_state(handoff: str) -> tuple[dict, str | None]:
         if isinstance(data, dict) and "artifacts" in data:
             return data, path
     return {}, None
+
+
+def lab_testing(state, lab, *, only_sigma=False):
+    """Require a successful test of the exact submitted bytes BEFORE acceptance."""
+    details = []
+    for kind, items in (state.get("artifacts") or {}).items():
+        if only_sigma and kind != "sigma_rule":
+            continue
+        for name, rec in items.items():
+            digest = hashlib.sha256(rec.get("content", "").encode("utf-8", "surrogatepass")).hexdigest()
+            submitted = rec.get("submitted_at", "")
+            tests = lab.get("rule_tests", []) if kind == "sigma_rule" else lab.get("runs", [])
+            matching = [test for test in tests if test.get("sha256") == digest and test.get("at")
+                        and submitted and test["at"] <= submitted and
+                        (test.get("valid") is True if kind == "sigma_rule" else
+                         test.get("kind") == kind and test.get("executed") is True and test.get("outcome") == "ok"
+                         and test.get("exit_code") == 0 and not test.get("timed_out"))]
+            receipt = any(e.get("role") == "analyst" and e.get("tool") == "submit_artifact" and e.get("outcome") == "accepted"
+                          and e.get("args", {}).get("kind") == kind and e.get("args", {}).get("name") == name
+                          and e.get("args", {}).get("sha256") == digest for e in state.get("audit_log", []))
+            details.append({"kind": kind, "name": name, "sha256": digest, "tested": bool(matching) and receipt})
+    return bool(details) and all(d["tested"] for d in details), details
+
+
+def load_lab(handoff):
+    for path in sorted(Path(handoff).glob("lab/*.json")):
+        data = json.loads(path.read_text())
+        if isinstance(data, dict) and "parts" in data:
+            data = next((p.get("data") for p in data["parts"] if p.get("data")), {})
+        elif isinstance(data, list):
+            data = next((p.get("data") for p in data if p.get("data")), {})
+        if isinstance(data, dict) and "runs" in data and "rule_tests" in data:
+            return data
+    return {}
 
 
 def write_artifacts(state: dict, out_dir: Path) -> dict[str, dict[str, Path]]:
@@ -214,6 +249,7 @@ def main() -> int:
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--work", required=True)
+    ap.add_argument("--require-lab", action="store_true")
     ap.add_argument("--only", choices=["sigma"], help="Grade only Sigma rules for the focused rules scenario")
     args = ap.parse_args()
     out, work = Path(args.out), Path(args.work)
@@ -240,6 +276,8 @@ def main() -> int:
         report["refused"] = "no soc snapshot found under the hand-off directory"
         return finish()
     export = json.loads((Path(args.data) / "log_export.json").read_text())
+    lab_ok, lab_details = lab_testing(state, load_lab(args.handoff), only_sigma=args.only == "sigma")
+    report["lab_testing"] = {"passed": lab_ok, "artifacts": lab_details}
     truth = json.loads((Path(args.data) / "ground_truth.json").read_text())
     written = write_artifacts(state, work / "artifacts")
     report["artifacts"] = {k: sorted(v) for k, v in written.items()}
@@ -250,12 +288,20 @@ def main() -> int:
         report["details"] = {"sigma": det_s}
         total = sum(r["weight"] for r in rows_s)
         report["reward"] = round(sum(r["weight"] for r in rows_s if r["result"]) / total, 4)
+        if args.require_lab:
+            report["reward"] = round(.8 * report["reward"] + .2 * lab_ok, 4)
+        print(json.dumps({"lab_testing_passed": lab_ok, "tested": sum(d["tested"] for d in lab_details),
+                          "submitted": len(lab_details), "untested": [d["name"] for d in lab_details if not d["tested"]]}))
         return finish()
     rows_h, det_h = grade_hunts(written["hunt_script"], export, truth, dataset, str(work / "runs"))
     rows_i, det_i = grade_extractors(written["ioc_extractor"], export, truth, dataset, str(work / "runs"))
     report["rows"] = rows_s + rows_h + rows_i
     report["details"] = {"sigma": det_s, "hunt": det_h, "ioc": det_i, "attempts": state.get("artifact_attempts", [])}
     report["reward"] = round(sum(r["weight"] for r in report["rows"] if r["result"]), 4)
+    if args.require_lab:
+        report["reward"] = round(.8 * report["reward"] + .2 * lab_ok, 4)
+    print(json.dumps({"lab_testing_passed": lab_ok, "tested": sum(d["tested"] for d in lab_details),
+                      "submitted": len(lab_details), "untested": [d["name"] for d in lab_details if not d["tested"]]}))
     return finish()
 
 

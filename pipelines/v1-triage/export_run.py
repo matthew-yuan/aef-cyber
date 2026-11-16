@@ -150,6 +150,9 @@ def scorecard(instance_id: str, record: dict, models: dict, current_rows: list[d
     for step, title in [("judge-triage", "Judge: triage"), ("judge-report", "Judge: incident report")]:
         lines.append(f"| {title} | {verifications.get(step, {}).get('score', 0):.2f} |")
     lines.append("")
+    failed_actions = [r for r in current_rows if r.get("action_gate") and not r.get("result")]
+    if failed_actions:
+        lines += ["**Action verification failure: mission score 0.00.** Required products were not accepted.", ""]
     lines += grading.summary(overall.get("score", 0), current_rows)
     if rescored:
         lines += ["The current code checks score differently from the ones the run stored; the tables below use the current checks.", ""]

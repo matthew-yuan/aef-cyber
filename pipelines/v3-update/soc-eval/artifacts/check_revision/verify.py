@@ -64,7 +64,7 @@ def score(state):
         ("revision-read-asset", "Newly affected asset was read before revision", read("get_asset", host="WS-G1-007")),
         ("revision-read-playbook", "Containment playbook was re-read", read("get_playbook")),
         ("revision-search-new-logs", "New workstation logs were searched before revision",
-         any(e.get("tool") == "search_logs" and e.get("outcome") == "ok"
+         any(e.get("tool") == "search_logs" and e.get("outcome") == "ok" and e.get("matched", 0) > 0
              and has(e.get("args", {}), r"WS-?G1-?007|192\.0\.2\.7") for e in reads)),
     ]
     # Retention checks assess the final product; regression metadata distinguishes loss from an initial miss.
@@ -83,7 +83,9 @@ def score(state):
                               ("okafor-reset", r"reset|disable", r"j\.okafor"),
                               ("backup-reset", r"reset|disable", r"svc_backup")]:
         checks.append((f"retain-{key}", "Original containment remains: " + key, action(kind, target)))
-    rows = [{"id": k, "description": d, "result": bool(ok), "weight": 1 / len(checks)} for k, d, ok in checks]
+    rows = [{"id": k, "description": d, "result": end is not None and bool(revised) and bool(ok), "weight": 1 / len(checks)} for k, d, ok in checks]
+    rows.append({"id": "revision-action-required", "result": end is not None and bool(revised), "weight": -12.0,
+                 "description": "UPDATE-01 revision was accepted, not merely claimed", "action_gate": True})
     for key, field, pattern, title in retained:
         before, after = has(original.get(field, []), pattern), has(revised.get(field, []), pattern)
         rows.append({"id": f"regression-{key}", "description": title, "result": bool(revised) and not (before and not after),

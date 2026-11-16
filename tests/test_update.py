@@ -101,7 +101,7 @@ def ideal_state():
         "audit_log": [event("list_injects"), event("get_incident_report", version="INITIAL"),
                       event("get_alert", alert_id="ALT-1007"), event("get_intel", intel_id="INT-26-032"),
                       event("get_asset", host="WS-G1-007"), event("get_playbook"),
-                      event("search_logs", source="all", host="WS-G1-007"),
+                      {**event("search_logs", source="all", host="WS-G1-007"), "matched": 4},
                       {"role": "analyst", "version": "UPDATE-01", "tool": "submit_incident_report", "outcome": "accepted"}],
     }
 
@@ -109,7 +109,7 @@ def ideal_state():
 def test_adaptation_grade_rejects_noop_and_detects_regressions():
     rows = grader.score(ideal_state())
     assert all(r["result"] for r in rows)
-    assert sum(r["weight"] for r in rows) == pytest.approx(1)
+    assert sum(r["weight"] for r in rows if r["weight"] > 0) == pytest.approx(1)
     assert not any(r["result"] for r in grader.score({}) if r["weight"])
     noop = ideal_state()
     noop["reports"][1] = {**deepcopy(REPORT), "version": "UPDATE-01"}

@@ -57,7 +57,7 @@ EVIDENCE_PAGE = 4000
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 def _key(text: str) -> str:
@@ -299,12 +299,13 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
         decoded, executed or mounted here."""
         found = next((e for e in self.evidence if _key(e["id"]) == _key(evidence_id)), None)
         args = {"evidence_id": evidence_id, "offset": offset, "length": length}
-        self._log("get_evidence", args, "ok" if found else "not_found")
         if found is None:
+            self._log("get_evidence", args, "not_found")
             return {"error": f"No evidence {evidence_id!r}. Items: {[e['id'] for e in self.evidence]}"}
         text = self._evidence_text(found)
         offset = max(0, int(offset or 0))
         length = max(1, min(int(length or EVIDENCE_PAGE), 20000))
+        self._log("get_evidence", args, "ok", offset=offset, returned_chars=len(text[offset:offset + length]), total_chars=len(text))
         return {"id": found["id"], "kind": found["kind"], "title": found["title"], "source_host": found.get("source_host"),
                 "collected_at": found.get("collected_at"), "total_chars": len(text), "offset": offset,
                 "content": text[offset:offset + length], "more": offset + length < len(text)}
@@ -363,7 +364,7 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
         if problems:
             self._log("submit_triage", args, "rejected", reason="incomplete", problems=problems)
             return {"error": "Triage is incomplete; " + "; ".join(problems)}
-        self.triage = {"assessments": assessments, "submitted_at": _now()}
+        self.triage = {"assessments": deepcopy(assessments), "submitted_at": _now()}
         self._log("submit_triage", args, "accepted")
         return {"status": "submitted", "submitted_at": self.triage["submitted_at"], "assessed": len(assessments)}
 
@@ -498,7 +499,7 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
         if problems:
             self._log("submit_evidence_report", args, "rejected", reason="incomplete", problems=problems)
             return {"error": "The evidence report is incomplete; " + "; ".join(problems)}
-        self.evidence_report = {**args, "submitted_at": _now()}
+        self.evidence_report = {**deepcopy(args), "submitted_at": _now()}
         self._log("submit_evidence_report", args, "accepted")
         return {"status": "submitted", "submitted_at": self.evidence_report["submitted_at"], "items": len(findings)}
 

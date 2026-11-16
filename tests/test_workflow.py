@@ -6,12 +6,12 @@ from webapp import workflow as graphs
 
 def test_actual_evaluation_graphs():
     graph = graphs.workflow("v3")
-    assert len(graph) == 31
+    assert len(graph) == 37
     nodes = {s["id"]: s for s in graph}
     assert nodes["soc"]["depends_on"] == []
     assert nodes["lab"]["depends_on"] == []
     assert set(nodes["triage"]["depends_on"]) == {"seed", "seed-lab", "analyst"}
-    assert nodes["judge-triage"]["depends_on"] == ["triage"]
+    assert nodes["judge-triage"]["depends_on"] == ["triage", "evidence-triage"]
     assert set(nodes["handoff"]["depends_on"]) == {"snap-final", "scorebox-ctr"}
     assert "snap-revised" in nodes["score"]["depends_on"]
     seen = set()

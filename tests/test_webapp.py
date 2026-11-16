@@ -24,7 +24,7 @@ def test_launch_progress_and_single_active_run(client):
     assert client.get("/").status_code == 200
     assert client.get("/static/dag.js").headers["cache-control"] == "no-store"
     assert client.get("/api/pipelines/v3/workflow").status_code == 200
-    assert len(client.get("/api/pipelines/v3/workflow").json()["steps"]) == 31
+    assert len(client.get("/api/pipelines/v3/workflow").json()["steps"]) == 37
     assert client.get("/api/pipelines/missing/workflow").status_code == 404
     assert {p["id"] for p in client.get("/api/pipelines").json()} == set(dashboard.PIPELINES)
     assert client.post("/api/runs", json={"pipeline": "../unknown"}).status_code == 422

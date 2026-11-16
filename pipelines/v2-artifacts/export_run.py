@@ -201,6 +201,9 @@ def scorecard(instance_id: str, record: dict, models: dict, facts_rows: list[dic
     for step, title in [("judge-triage", "Judge: triage"), ("judge-report", "Judge: incident report"), ("judge-evidence", "Judge: evidence"), ("judge-artifacts", "Judge: code")]:
         lines.append(f"| {title} | {ver.get(step, {}).get('score', 0):.2f} |")
     lines.append("")
+    failed_actions = [r for r in facts_rows + artifact_rows if r.get("action_gate") and not r.get("result")]
+    if failed_actions:
+        lines += ["**Action verification failure: mission score 0.00.** " + "; ".join(r["description"] for r in failed_actions), ""]
     lines += grading.summary(overall.get("score", 0), facts_rows)
     if models["analyst"] == models["judge"]:
         lines += ["**Self-grading caveat.** The analyst and the judge are the same model, which tends to grade its own output generously. "

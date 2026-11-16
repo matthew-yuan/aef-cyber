@@ -52,8 +52,14 @@ def test_artifact_checks_on_ideal_and_empty_state(ground_truth):
         "audit_log": [e("get_situation")] + [e("get_evidence", evidence_id=i) for i in ev_ids] + [e("submit_evidence_report", "accepted"),
                       e("get_log_schema"), e("submit_artifact", "accepted", kind="hunt_script")],
     }
+    for entry in ideal["audit_log"]:
+        if entry["tool"] == "get_evidence":
+            entry.update(offset=0, returned_chars=100, total_chars=100)
+    ideal["audit_log"] = [e for e in ideal["audit_log"] if e["tool"] != "submit_artifact"]
+    ideal["audit_log"] += [e("submit_artifact", "accepted", kind=kind, name=name, sha256=rec["sha256"])
+                           for kind, items in ideal["artifacts"].items() for name, rec in items.items()]
     rows = verify.score(ideal)
-    scored = [r for r in rows if r.get("weight")]
+    scored = [r for r in rows if r.get("weight", 0) > 0]
     assert [r["id"] for r in scored if not r["result"]] == []
     assert abs(sum(r["weight"] for r in scored) - 1.0) < 1e-9
     empty = [r for r in verify.score({}) if r.get("weight")]

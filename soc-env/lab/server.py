@@ -50,7 +50,7 @@ SAMPLE = 5
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 @environment_card(name="lab")

@@ -38,7 +38,7 @@ def test_focused_fact_weights_and_absent_product():
         checks = load(HERE / kind / "artifacts/check_facts/verify.py")
         rows = checks.score({})
         assert rows and all(r["id"].startswith(prefixes) for r in rows)
-        assert abs(sum(r["weight"] for r in rows) - 1) < 1e-9
+        assert abs(sum(r["weight"] for r in rows if r["weight"] > 0) - 1) < 1e-9
         assert not any(r["result"] for r in rows)
 
 
