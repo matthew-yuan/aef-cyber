@@ -12,6 +12,7 @@ scorebox container. Every verifier's rows total 1.0, so the aggregate is their m
 """
 import importlib.util
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -23,9 +24,9 @@ SOC_VERSION = None          # None deploys the latest registered soc (v3 or late
 LAB_VERSION = None          # None deploys the latest registered lab
 SEED_ARTIFACT = "soc-sample"      # soc-env/data/incident.json as the soc universe
 LAB_SEED_ARTIFACT = "lab-sample"  # the same incident, registered for environment_name lab
-AGENT_VERSION = 1           # agents/sgp-agent
-ANALYST_MODEL = "openai/openai/gpt-4o"
-JUDGE_MODEL = "openai/openai/gpt-4o"  # same model as the analyst: the scorecard flags the self-grading caveat
+AGENT_VERSION = int(os.getenv("CYBER_AGENT_VERSION", "2"))  # LiteLLM-compatible agents/sgp-agent
+ANALYST_MODEL = os.getenv("CYBER_ANALYST_MODEL", "openai/openai/gpt-5")
+JUDGE_MODEL = os.getenv("CYBER_JUDGE_MODEL", "openai/openai/gpt-6-sol")  # Must support strict JSON-schema output.
 CONVERSATION = "analyst"    # all four prompts share it
 SCOREBOX_ENV = {"LITELLM_API_KEY": "", "ANTHROPIC_API_KEY": "", "LITELLM_BASE_URL": "", "ANTHROPIC_BASE_URL": "", "LITELLM_EXTRA_HEADERS": "{}"}
 GRADER = "python3 -I /harness/run_tests.py --handoff /handoff --data /harness/data --out /work/out --work /work/runs"

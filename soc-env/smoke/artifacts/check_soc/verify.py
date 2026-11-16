@@ -14,6 +14,7 @@ EXPECTED_TOOLS = {
     "soc_list_intel", "soc_get_intel", "soc_list_change_records", "soc_get_playbook", "soc_list_injects",
     "soc_submit_triage", "soc_submit_incident_report",
     "soc_get_log_schema", "soc_list_evidence", "soc_get_evidence", "soc_submit_artifact", "soc_submit_evidence_report",
+    "soc_get_incident_report",
 }
 HUNT = 'def hunt(data):\n    return [{"source": "dns", "id": r["id"], "behavior": "smoke", "host": r.get("host", ""), "reason": "smoke"} for r in data.get("dns", [])]\n'
 BANNED = "import socket\ndef hunt(data):\n    socket.create_connection(('203.0.113.1', 80))\n    return []\n"

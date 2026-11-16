@@ -1,6 +1,6 @@
-# agent-env config for running locally against Scale GenAI Platform (SGP) models.
+# agent-env config for running locally against an OpenAI-compatible LiteLLM proxy.
 # All stores and sandboxes are local (state lives under ~/.local/state/agent-env/).
-# Credentials come from the shell: export SGP_API_KEY and SGP_ACCOUNT_ID before running.
+# Export LITELLM_BASE_URL and LITELLM_API_KEY before running. No credentials are stored here.
 
 [stores]
 document = "local"   # SQLite      ~/.local/state/agent-env/document_store/documents.db
@@ -15,22 +15,12 @@ agent_default = "local"   # agents too
 [agents]
 default_a2a_agent_id = "a2a-default"
 
-# SGP's OpenAI-compatible v5 endpoint. agent-env and its agents call it through LiteLLM.
-# SGP authenticates with the x-api-key / x-selected-account-id headers, not a Bearer token;
-# api_key is still required by agent-env, so it carries the same key.
-# Model names: SGP uses provider/model (e.g. "openai/gpt-4o"). Through LiteLLM, prefix
-# them with another "openai/" so LiteLLM speaks the OpenAI wire format to SGP instead of
-# routing natively to the provider: "openai/openai/gpt-4o".
-# SGP_ACCOUNT_ID must be an account your user is a member of (the account's id, not your user id).
-# List the account's models with: uv run python sgp_smoke_test.py --list
+# Prefix proxy model ids with openai/ for AEF's LiteLLM client. The agent removes
+# exactly that routing prefix before sending the original model id to the proxy.
 [model]
-base_url = "https://sgp-api.scalegov.com/v5"   # ScaleGov deployment
-api_key  = "env:SGP_API_KEY"
-default  = "openai/openai/gpt-4o"
-
-[model.headers]
-"x-api-key"             = "env:SGP_API_KEY"
-"x-selected-account-id" = "env:SGP_ACCOUNT_ID"
+base_url = "https://litellm-proxy.ml-serving-internal.scale.com/v1"
+api_key  = "env:LITELLM_API_KEY"
+default  = "openai/openai/gpt-5"
 
 [runner]
 impl = "agent_env.runner.local_runner:LocalRunner"

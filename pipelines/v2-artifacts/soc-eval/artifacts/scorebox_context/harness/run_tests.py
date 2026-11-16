@@ -214,6 +214,7 @@ def main() -> int:
     ap.add_argument("--data", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--work", required=True)
+    ap.add_argument("--only", choices=["sigma"], help="Grade only Sigma rules for the focused rules scenario")
     args = ap.parse_args()
     out, work = Path(args.out), Path(args.work)
     out.mkdir(parents=True, exist_ok=True)
@@ -244,6 +245,12 @@ def main() -> int:
     report["artifacts"] = {k: sorted(v) for k, v in written.items()}
     dataset = str(Path(args.data) / "log_export.json")
     rows_s, det_s = grade_sigma(written["sigma_rule"], export, truth)
+    if args.only == "sigma":
+        report["rows"] = rows_s
+        report["details"] = {"sigma": det_s}
+        total = sum(r["weight"] for r in rows_s)
+        report["reward"] = round(sum(r["weight"] for r in rows_s if r["result"]) / total, 4)
+        return finish()
     rows_h, det_h = grade_hunts(written["hunt_script"], export, truth, dataset, str(work / "runs"))
     rows_i, det_i = grade_extractors(written["ioc_extractor"], export, truth, dataset, str(work / "runs"))
     report["rows"] = rows_s + rows_h + rows_i

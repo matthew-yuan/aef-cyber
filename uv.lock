@@ -32,6 +32,9 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "agentenv-framework", extra = ["explorer"] },
+    { name = "fastapi" },
+    { name = "markdown-it-py" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -40,7 +43,12 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "agentenv-framework", extras = ["explorer"], specifier = ">=0.9.1335" }]
+requires-dist = [
+    { name = "agentenv-framework", extras = ["explorer"], specifier = ">=0.9.1335" },
+    { name = "fastapi", specifier = ">=0.115" },
+    { name = "markdown-it-py", specifier = ">=3" },
+    { name = "uvicorn", specifier = ">=0.30" },
+]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pytest", specifier = ">=8" }]

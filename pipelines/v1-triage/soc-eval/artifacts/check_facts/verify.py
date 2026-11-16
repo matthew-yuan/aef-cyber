@@ -21,6 +21,15 @@ from mcp.client.streamable_http import streamable_http_client
 
 FACTS_WEIGHT_TOTAL = 6
 
+# The largest pipeline has total positive weight 12 (v1). One failed gate must
+# outweigh every other earned point, including judge scores, in v1/v2/v3.
+CRITICAL_PENALTY = 12.0
+CRITICAL_CHECKS = {
+    "report-host-ws-g3-014": "Missed confirmed compromise of WS-G3-014",
+    "report-host-srv-file-01": "Missed confirmed compromise of SRV-FILE-01",
+    "report-host-srv-web-02": "Missed confirmed compromise of SRV-WEB-02",
+}
+
 ALERTS = ["ALT-1001", "ALT-1002", "ALT-1003", "ALT-1004", "ALT-1005", "ALT-1006"]
 C2_DOMAIN = r"cdn-metrics\.updatesvc\.example|updatesvc\.example"
 C2_IP = r"203\.0\.113\.154"
@@ -135,6 +144,9 @@ def score(state: dict) -> list[dict]:
     rows = [{"id": i, "result": bool(ok), "weight": weight, "description": d} for i, d, ok in checks]
 
     passed = {i: bool(ok) for i, _, ok in checks}
+    rows += [{"id": f"critical-{check}", "result": passed[check], "weight": -CRITICAL_PENALTY,
+              "description": description, "critical": True, "policy": "compromise-gates-v1"}
+             for check, description in CRITICAL_CHECKS.items()]
     traps = [
         ("scanner", "Authorized scan looks like an attack (ALT-1001)", "triage-1001-fp", "report-no-benign-hosts"),
         ("foothold", "Low-severity VPN logon is the foothold (ALT-1002)", "triage-1002-tp", "report-host-ws-g3-014"),

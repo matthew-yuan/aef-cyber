@@ -23,6 +23,9 @@ from pathlib import Path
 
 import build
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import grading  # noqa: E402
+
 
 def _load_checks(name: str):
     """This project's own check module (both are called verify.py, so load each by path). Never analyst text."""
@@ -174,7 +177,7 @@ def level(score: float) -> int:
 
 
 def weighted(rows: list[dict]) -> float:
-    scored = [r for r in rows if r.get("weight")]
+    scored = [r for r in rows if r.get("weight", 0) > 0]
     return sum(r["weight"] for r in scored if r["result"]) / sum(r["weight"] for r in scored) if scored else 0.0
 
 
@@ -198,6 +201,7 @@ def scorecard(instance_id: str, record: dict, models: dict, facts_rows: list[dic
     for step, title in [("judge-triage", "Judge: triage"), ("judge-report", "Judge: incident report"), ("judge-evidence", "Judge: evidence"), ("judge-artifacts", "Judge: code")]:
         lines.append(f"| {title} | {ver.get(step, {}).get('score', 0):.2f} |")
     lines.append("")
+    lines += grading.summary(overall.get("score", 0), facts_rows)
     if models["analyst"] == models["judge"]:
         lines += ["**Self-grading caveat.** The analyst and the judge are the same model, which tends to grade its own output generously. "
                   "This affects the four judge scores, not the code checks or the scorebox.", ""]
@@ -205,7 +209,8 @@ def scorecard(instance_id: str, record: dict, models: dict, facts_rows: list[dic
     if box:
         lines += ["| Check | Weight | Result | Description |", "| --- | --- | --- | --- |"]
         lines += [f"| `{r['id']}` | {r.get('weight', 0):.2f} | {'pass' if r['result'] else 'FAIL'} | {cell(r.get('description'))} |" for r in box.get("sandbox", []) + box.get("rows", [])]
-        lines += ["", f"Reward {box.get('reward')}; artifacts graded: {box.get('artifacts')}; grader time {box.get('elapsed_ms')} ms."]
+        lines += ["", f"- **Execution reward:** {box.get('reward')}", f"- **Grader duration:** {box.get('elapsed_ms')} ms", "- **Artifacts graded:**"]
+        lines += [f"  - {kind.replace('_', ' ')}: {', '.join(names) or 'None'}" for kind, names in box.get("artifacts", {}).items()]
     else:
         lines.append("No scorebox results were recorded.")
     lines += ["", "## Trap trace (triage and report)", "", "| Trap | In triage | In report | Diagnosis |", "| --- | --- | --- | --- |"]
@@ -213,7 +218,7 @@ def scorecard(instance_id: str, record: dict, models: dict, facts_rows: list[dic
               for r in facts_rows if r["id"].startswith("trace-")]
     for title, rows in [("Code checks: triage and report", facts_rows), ("Code checks: artifacts and evidence", artifact_rows)]:
         lines += ["", f"## {title}", "", "| Check | Result | Description |", "| --- | --- | --- |"]
-        lines += [f"| `{r['id']}` | {'pass' if r['result'] else 'FAIL'} | {cell(r['description'])} |" for r in rows if r.get("weight")]
+        lines += [f"| `{r['id']}` | {'pass' if r['result'] else 'FAIL'} | {cell(r['description'])} |" for r in rows if r.get("weight", 0) > 0]
     for step, title in [("judge-triage", "Judge: triage"), ("judge-report", "Judge: incident report"), ("judge-evidence", "Judge: evidence"), ("judge-artifacts", "Judge: code")]:
         rows = ver.get(step, {}).get("results", [])
         if rows:
@@ -225,10 +230,10 @@ def scorecard(instance_id: str, record: dict, models: dict, facts_rows: list[dic
     return "\n".join(lines) + "\n"
 
 
-def main(instance_id: str) -> None:
+def main(instance_id: str, output_version="v2", task_filename="soc_artifacts.json", extra_export=None) -> None:
     out_text = agent_env("task", "get-instance", "--id", instance_id)
     record = json.loads(out_text[out_text.find("{"):])
-    out = Path("runs") / "v2" / instance_id.rsplit("/", 1)[-1]
+    out = Path("runs") / output_version / instance_id.rsplit("/", 1)[-1]
     (out / "trajectories").mkdir(parents=True, exist_ok=True)
     write_json(out / "run_record.json", record)
     write_json(out / "verifications.json", record["metadata"].get("verifications", {}))
@@ -249,9 +254,11 @@ def main(instance_id: str) -> None:
         steps = json.loads(Path(pr["agent_trajectory_s3_uri"].removeprefix("file://")).read_text())
         write_json(out / "trajectories" / f"{pr['prompt_id']}.json", steps)
         (out / "trajectories" / f"{pr['prompt_id']}.md").write_text(transcript(pr["prompt_id"], pr.get("model"), steps))
-    judge_model = next((s.get("default_model") for s in json.loads((build.HERE / "soc-eval/tasks/soc_artifacts.json").read_text()) if s["type"] == "rubrics_verifier"), None)
+    judge_model = next((s.get("default_model") for s in json.loads((build.HERE / "soc-eval/tasks" / task_filename).read_text()) if s["type"] == "rubrics_verifier"), None)
     models = {"analyst": analyst_model or build.ANALYST_MODEL, "judge": judge_model or build.JUDGE_MODEL}
     (out / "scorecard.md").write_text(scorecard(instance_id, record, models, verify_facts.score(state), verify_artifacts.score(state)))
+    if extra_export:
+        extra_export(record, out, models)
     print(f"{out}: see scorecard.md ({len(written)} quarantined artifacts)")
 
 

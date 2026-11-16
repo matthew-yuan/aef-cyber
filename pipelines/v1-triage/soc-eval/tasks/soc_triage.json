@@ -21,7 +21,7 @@
     "id": "analyst",
     "type": "deploy_agent",
     "a2a_agent_id": "sgp-agent",
-    "a2a_agent_version": 1,
+    "a2a_agent_version": 2,
     "agent_name": "analyst",
     "env_ids": [
       "soc"
@@ -41,7 +41,7 @@
     "prompt_id": "triage",
     "context_id": "analyst",
     "prompt": "You have taken over the day shift. The alert queue has open alerts from the last 48 hours, and new threat intelligence came in this morning.\n\nUse your SOC tools to read the situation, every alert, the assets they touch, the logs around them, the change records and the intelligence bulletins. Decide for each alert whether it is a true positive, a false positive, or needs more information, and which alerts belong to the same intrusion.\n\nThen submit your triage with soc_submit_triage: one assessment per alert in the queue, each with a verdict, a rationale that cites the evidence, and the related hosts and alerts. You can submit only once, so read everything you need first.\n\nDo not write the incident report yet.",
-    "model": "openai/openai/gpt-4o",
+    "model": "openai/openai/gpt-4.1-nano-2025-04-14",
     "timeout_seconds": 1800,
     "depends_on": [
       {
@@ -70,7 +70,7 @@
     "prompt_id": "report",
     "context_id": "analyst",
     "prompt": "Write the incident report for what you confirmed in triage. The Division G-6 needs it before the 1600Z update.\n\nRead whatever else you need, then submit the report with soc_submit_incident_report: a summary; every affected host and compromised account; the indicators; an attack narrative with times, from first access to the latest activity; the containment actions you recommend, each as a playbook option with its target and rationale; the escalation (who is told, what, and by when); and the evidence to preserve first. Follow the playbook's rules. You can submit only once.",
-    "model": "openai/openai/gpt-4o",
+    "model": "openai/openai/gpt-4.1-nano-2025-04-14",
     "timeout_seconds": 1800,
     "depends_on": [
       {
@@ -108,7 +108,7 @@
     "verifier_id": "judge-triage",
     "prompt_id": "triage",
     "use_agent_judge": false,
-    "default_model": "openai/openai/gpt-4o",
+    "default_model": "openai/openai/gpt-6-sol",
     "output_format": "rubric_partial",
     "score_aggregator": "weighted_average",
     "criteria": [
@@ -207,7 +207,7 @@
     "verifier_id": "judge-report",
     "prompt_id": "report",
     "use_agent_judge": false,
-    "default_model": "openai/openai/gpt-4o",
+    "default_model": "openai/openai/gpt-6-sol",
     "output_format": "rubric_partial",
     "score_aggregator": "weighted_average",
     "criteria": [

@@ -4,6 +4,9 @@ version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
     "agentenv-framework[explorer]>=0.9.1335",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "markdown-it-py>=3",
 ]
 
 [dependency-groups]
@@ -13,3 +16,4 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]

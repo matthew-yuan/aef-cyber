@@ -9,6 +9,7 @@ state (env_outcome_verifier), a direct LLM judge per phase (rubrics_verifier), a
 """
 import importlib.util
 import json
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -16,9 +17,9 @@ REPO = HERE.parent.parent
 
 SOC_VERSION = None         # soc-env/soc/: None deploys the latest registered version; set a number to pin one
 SEED_ARTIFACT = "soc-sample"  # soc-env/data/incident.json as a universe
-AGENT_VERSION = 1          # agents/sgp-agent
-ANALYST_MODEL = "openai/openai/gpt-4o"  # same model as the judge: the scorecard flags the self-grading caveat
-JUDGE_MODEL = "openai/openai/gpt-4o"    # the direct judge needs json_schema output, which SGP serves for gpt-4o
+AGENT_VERSION = int(os.getenv("CYBER_AGENT_VERSION", "2"))  # LiteLLM-compatible agents/sgp-agent
+ANALYST_MODEL = os.getenv("CYBER_ANALYST_MODEL", "openai/openai/gpt-5")
+JUDGE_MODEL = os.getenv("CYBER_JUDGE_MODEL", "openai/openai/gpt-6-sol")  # Must support strict JSON-schema output.
 CONVERSATION = "analyst"   # both prompts share it, so the analyst carries its triage into the report
 
 

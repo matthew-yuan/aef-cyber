@@ -19,6 +19,7 @@ takes one submission per version (the initial queue, then each inject in turn), 
 submission is kept, so the original and the revision can be compared.
 """
 import hashlib
+from copy import deepcopy
 import json
 import re
 import sys
@@ -100,7 +101,8 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
 
     def _log(self, tool: str, args: dict, outcome: str, **fields) -> None:
         role = ToolContext.current().role
-        self.audit_log.append({"at": _now(), "role": role, "tool": tool, "args": args, "outcome": outcome, **fields})
+        self.audit_log.append({"at": _now(), "role": role, "tool": tool, "args": deepcopy(args),
+                               "outcome": outcome, "version": self._current_version(), **fields})
 
     # ---- data plane -------------------------------------------------------------------------
 
@@ -117,6 +119,21 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
                 data = json.loads(Path(part.file.uri.removeprefix("file://")).read_text())
             else:
                 continue
+            digest = ""
+            # Retries must not duplicate records or unlock another revision. Validate before changing state.
+            if "inject" in data:
+                inject = data["inject"]
+                if not isinstance(inject, dict) or not isinstance(inject.get("id"), str) or not inject["id"].strip():
+                    raise ValueError("An inject needs a non-empty string id")
+                if _key(inject["id"]) == "INITIAL":
+                    raise ValueError("INITIAL is reserved for the original incident")
+                digest = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+                previous = next((i for i in self.injects if _key(i["id"]) == _key(inject["id"])), None)
+                if previous:
+                    if previous.get("payload_sha256") == digest:
+                        continue
+                    raise ValueError(f"Inject {inject['id']!r} was already issued with different content")
+                data = deepcopy(data)
             self.metadata.update(data.get("metadata", {}))
             self.organization.update(data.get("organization", {}))
             for asset in data.get("assets", []):
@@ -129,7 +146,7 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
             self.playbook.update(data.get("playbook", {}))
             self.evidence.extend(data.get("evidence", []))
             if "inject" in data:
-                self._issue_inject(data["inject"])
+                self._issue_inject({**data["inject"], "payload_sha256": digest})
 
     def _add_asset(self, asset: dict) -> None:
         self.assets.append(asset)
@@ -140,11 +157,13 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
     def _issue_inject(self, inject: dict) -> None:
         """Record an inject (new alerts, logs or intel arrive with it in the same part)."""
         self.injects.append({**inject, "received_at": _now()})
+        self._log("issue_inject", {"inject_id": inject["id"]}, "issued")
 
     @get_data
     async def _state(self) -> list:
         return [DataPart(data={
             "incident_id": self.metadata.get("incident_id"),
+            "current_version": self._current_version(),
             "triage": self.triage,
             "report": self.report,
             "reports": self.reports,
@@ -298,7 +317,16 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
     async def list_injects(self) -> dict:
         """List the updates issued since you started (new alerts, intel or orders), oldest first. Empty when nothing has changed."""
         self._log("list_injects", {}, "ok")
-        return {"injects": [{k: v for k, v in i.items() if k != "received_at"} for i in self.injects]}
+        return {"current_version": self._current_version(),
+                "injects": [{k: v for k, v in i.items() if k not in ("received_at", "payload_sha256")} for i in self.injects]}
+
+    @tool(name="{environment_name}_get_incident_report")
+    async def get_incident_report(self, version: str = "") -> dict:
+        """Read an accepted incident report. Empty version returns the latest; INITIAL or an update id returns that version.
+        Read the original before revising so still-valid findings and containment actions are preserved."""
+        found = next((r for r in self.reports if _key(r["version"]) == _key(version)), None) if version else self.report
+        self._log("get_incident_report", {"version": version}, "ok" if found else "not_found")
+        return deepcopy(found) if found else {"error": f"No incident report for {version or 'latest'}"}
 
     # ---- action tools -----------------------------------------------------------------------
 
@@ -376,7 +404,7 @@ class CyberDefenseCellEnv(AgentEnvEnvironment):
             reason = f"empty: {empty}" if empty else f"each containment action needs an 'action' and a 'target'; bad: {bad_actions}"
             self._log("submit_incident_report", args, "rejected", reason=reason, version=version)
             return {"error": f"The incident report is incomplete; {reason}"}
-        entry = {**args, "version": version, "submitted_at": _now()}
+        entry = {**deepcopy(args), "version": version, "submitted_at": _now()}
         self.reports.append(entry)
         self._log("submit_incident_report", args, "accepted", version=version)
         return {"status": "submitted", "version": version, "submitted_at": entry["submitted_at"]}

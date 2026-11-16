@@ -1,9 +1,9 @@
-# aef-cyber: agent T&E for cyber defense with the AgentEnv Framework and SGP
+# aef-cyber: agent T&E for cyber defense with AEF and LiteLLM
 
 This project evaluates an AI agent on a cyber defense staff task: triaging a security alert queue
 and writing the incident report. It uses Scale's open-source
 [AgentEnv Framework](https://www.agentenvframework.com/docs) (`agentenv-framework` 0.9.1335) and
-models served by Scale GenAI Platform (SGP) on ScaleGov. Everything runs locally in Docker. It is
+models served by Scale's remote LiteLLM proxy. Execution runs locally in Docker. It is
 the cyber counterpart of [aef-toc-environment](https://github.com/cmullen-scale/aef-toc-environment),
 and shares its layout, agent and config. **All scenario data is fictional and unclassified.**
 
@@ -11,7 +11,8 @@ and shares its layout, agent and config. **All scenario data is fictional and un
 
 | Pipeline | Status | What it is | Run it |
 | --- | --- | --- | --- |
-| [v2-artifacts](pipelines/v2-artifacts/) | **Current** | v1 plus evidence analysis and detection/response code: the analyst reads forensic evidence, then writes Sigma rules, a hunt script and an IOC extractor, testing them in a lab container. Its code is executed only inside an offline scoring container; the host never runs it. Graded by code checks, four judges and the scorebox's execution tests. | `uv run agent-env run pipelines/v2-artifacts/soc-eval` |
+| [v3-update](pipelines/v3-update/) | **Current** | v2 plus a mid-task telemetry update, report revision, adaptation/retention checks and a revision judge. Preserves the baseline score. | `uv run agent-env run pipelines/v3-update/soc-eval` |
+| [v2-artifacts](pipelines/v2-artifacts/) | Baseline, still runs | v1 plus evidence analysis and detection/response code: the analyst reads forensic evidence, then writes Sigma rules, a hunt script and an IOC extractor, testing them in a lab container. Graded by code checks, four judges and offline execution tests. | `uv run agent-env run pipelines/v2-artifacts/soc-eval` |
 | [v1-triage](pipelines/v1-triage/) | Baseline, still runs | The analyst triages the alert queue, then writes the incident report, in one conversation. Graded by code checks on the end state, a direct LLM judge per phase, one aggregate score, and a scorecard for human review. | `uv run agent-env run pipelines/v1-triage/soc-eval` |
 
 Both pipelines use the same world and agent image; v2 adds a lab environment and a scoring container:
@@ -56,6 +57,7 @@ soc-env/
   data/                      incident.json, ground_truth.json (scorebox only), log_export.json, build_exports.py
   smoke/, lab-smoke/, scorebox-smoke/   model-free proofs
 pipelines/
+  v3-update/                 current: new telemetry, report revision and adaptation grading
   v2-artifacts/              current pipeline: triage, report, evidence analysis, code
   v1-triage/                 baseline pipeline
 tests/                       pytest: the screen, the Sigma evaluator, the data, sync and host-inertness
@@ -70,7 +72,7 @@ the pipelines.
 ## Setup
 
 You need macOS, [uv](https://docs.astral.sh/uv/), Docker with the Compose plugin (Rancher Desktop
-or Colima both work) and an SGP API key for a user who is a member of an SGP account.
+or Colima both work) and access to the remote LiteLLM proxy.
 
 1. **Python environment.** From this folder:
 
@@ -84,29 +86,36 @@ or Colima both work) and an SGP API key for a user who is a member of an SGP acc
    docker compose version
    ```
 
-3. **SGP credentials.** Export them in `~/.zshenv` (readable only by you, never in this repo).
-   The account ID is the *account's* ID, and your user must be a member of that account:
-
-   ```
-   export SGP_API_KEY="..."
-   export SGP_ACCOUNT_ID="..."
-   ```
-
-   `.agentenv/config.toml` points at `https://sgp-api.scalegov.com/v5` and sends both values as
-   the `x-api-key` and `x-selected-account-id` headers. Model names take an extra `openai/` prefix
-   for LiteLLM, e.g. `openai/openai/gpt-4o`.
-
-4. **Check it.** List the account's models, then send one test call:
+3. **LiteLLM credentials.** Export your key in the server's shell, never in this repo:
 
    ```bash
-   uv run python sgp_smoke_test.py --list
+   export LITELLM_API_KEY="..."
+   export LITELLM_BASE_URL="https://litellm-proxy.ml-serving-internal.scale.com/v1"
    ```
 
+   No SGP account or headers are needed. The proxy model aliases are `openai/gpt-5` (analyst)
+   and `openai/gpt-6-sol` (judge). AEF adds one routing prefix, so pipeline configuration uses
+   `openai/openai/gpt-5` and `openai/openai/gpt-6-sol`. Set `CYBER_ANALYST_MODEL` and
+   `CYBER_JUDGE_MODEL` before rebuilding, or choose both in the dashboard. The updated agent is
+   registered as v2; use `CYBER_AGENT_VERSION` if your local registry version differs.
+
+4. **Check it.**
+
    ```bash
-   uv run python sgp_smoke_test.py openai/openai/gpt-4o
+   uv run python model_smoke_test.py --list
+   uv run python model_smoke_test.py openai/openai/gpt-5
    ```
 
 ## Run it
+
+### Web dashboard
+
+```bash
+uv run python -m webapp.app
+```
+
+Open **http://127.0.0.1:8765** to launch runs, follow live progress/logs and review results.
+Start with the model-free SOC smoke test. See [dashboard instructions](webapp/README.md).
 
 The first time, register the world and the agent. The env images are built with `soc-env/` as the
 Docker context so they can copy the shared trusted modules. The first deploy also builds agent-env's
@@ -175,6 +184,20 @@ uv run python pipelines/v2-artifacts/export_run.py "<instance id>"
 
 ## Known limits
 
+### Critical compromise grading
+
+Policy `compromise-gates-v1` requires the submitted baseline report to identify all
+three confirmed compromised hosts: WS-G3-014, SRV-FILE-01 and SRV-WEB-02. Missing
+any host is a **critical failure: mission score 0.00**, regardless of judge grades
+or other successful checks. Component scores remain diagnostic. The framework
+enforces this through negative-weight gate rows in `facts` across v1, v2 and v3;
+later revision credit cannot erase a baseline compromise miss.
+
+`uv run python regrade_runs.py` adds a versioned mission grade to local exported
+scorecards and writes `grading.json`, preserving historical verifier records and
+stored scores. For example, GPT-4o run `soc_triage-wl9guskc` changes from its stored
+0.55 to mission score **0.00** for missing confirmed compromised hosts.
+
 - `build.py` deploys the latest `soc` and pins the agent version. Pin the env too (`SOC_VERSION`)
   once more than one pipeline depends on different server versions.
 - The direct judge needs strict JSON-schema output, which SGP supports for `gpt-4o`; the analyst
@@ -190,8 +213,7 @@ uv run python pipelines/v2-artifacts/export_run.py "<instance id>"
 ## Next steps
 
 - Run the first evals and hand-grade them to see how far the judge can be trusted.
-- Add a mid-task inject through the env's `data/add` (a new alert or bulletin after the report), as
-  aef-toc-environment's v3 does with its FRAGO, and grade the revision.
+- Extend v3's report revision to updated code artifacts and a synchronized lab/scoring dataset.
 - Add a second, held-out incident to the scorebox to measure how far rules and hunt scripts generalize.
 - Evidence beyond text: disk images and memory captures parsed by trusted tooling inside the scorebox.
 - Move to repeated runs (pass@k) with `agent-env task run --k`.
