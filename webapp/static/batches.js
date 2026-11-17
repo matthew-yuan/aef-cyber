@@ -40,6 +40,10 @@ function updateLaunchOptions() {
   $('start').textContent = launchBusy ? 'Starting…' : enabled || chosen.length > 1 ? `Start ${count} trials` : '▶  Start run';
   $('start').disabled = launchBusy || batchActive || records.some(r=>['queued','running'].includes(r.status)) ||
     (needsModel && !modelsReady) || !Number.isInteger(k) || k<1 || k>20 || count>40;
+  if(typeof uploadedRubric!=='undefined' && uploadedRubric &&
+     (chosen.length!==1 || chosen[0]!==uploadedRubric.scenario || k>3))$('start').disabled=true;
+  if(typeof rubricUploading!=='undefined' && rubricUploading)$('start').disabled=true;
+  if(typeof rubricInvalid!=='undefined' && rubricInvalid)$('start').disabled=true;
 }
 $('repeat-enabled').onchange=updateLaunchOptions;
 $('run-options').oninput=updateLaunchOptions;
@@ -57,11 +61,13 @@ $('launch-form').onsubmit = async event => {
   launchBusy = true; updateLaunchOptions(); notice('');
   try {
     const pipelines = launchScenarios(), repeated = $('repeat-enabled').checked;
-    const batch = repeated || pipelines.length > 1;
+    const custom = typeof uploadedRubric!=='undefined' && uploadedRubric;
+    const batch = repeated || pipelines.length > 1 || custom;
     const body = {model:$('model').value, judge_model:$('judge-model').value};
     if (batch) Object.assign(body,{pipelines,k:repeated?Number($('trial-k').value):1,
       success_threshold:repeated?Number($('trial-threshold').value):.8});
     else body.pipeline=pipelines[0];
+    if(custom)body.rubric_id=custom.id;
     const result = await api(batch?'/api/batches':'/api/runs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     selected = batch?result.run_ids[0]:result.id;
     detailSignature=''; openFile=''; fileText=''; fileHTML='';

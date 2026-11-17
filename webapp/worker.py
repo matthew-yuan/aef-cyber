@@ -72,6 +72,10 @@ def main(run_id):
         if pipeline.get("build") and not record.get("workspace_path"):
             subprocess.run([sys.executable, pipeline["build"]], cwd=ROOT, check=True, timeout=60)
         record["workflow"] = workflow(record["pipeline"], workspace) if record.get("workspace_path") else workflow(record["pipeline"])
+        if record.get("bundle_path"):
+            record["workflow"] = [{"id": step["id"], "type": step["type"],
+                "depends_on": [d["task_step_id"] for d in step.get("depends_on", [])]}
+                for path in sorted((Path(record["bundle_path"]) / "tasks").glob("*.json")) for step in json.loads(path.read_text())]
         from webapp.inputs import scenario_inputs
         inputs = scenario_inputs(record["pipeline"], workspace)
         inputs["source"] = "Scenario inputs captured before this run; records are retrieved through tools, not all sent in the prompt"
@@ -120,6 +124,13 @@ def main(run_id):
                 (out / "scorecard.md").write_text(scorecard(record["name"], verifications))
                 record["export_path"] = str(out.relative_to(ROOT))
             write_rubric(record["pipeline"], ROOT / record["export_path"], workspace)
+            if record.get("custom_rubric"):
+                custom = record["custom_rubric"]
+                (ROOT / record["export_path"] / "custom_rubric.json").write_text(json.dumps(custom, indent=2))
+                (ROOT / record["export_path"] / "custom_rubric.md").write_text(
+                    "# Uploaded supplemental rubric\n\n" + custom["title"] + "\n\n" +
+                    "Trusted scenario grading remains unchanged. Selected checks:\n\n" +
+                    "\n".join(f"- {c['id']} (weight {c['weight']})" for c in custom["checks"]))
             (ROOT / record["export_path"] / "grading_details.md").write_text(scorecard("Detailed grading evidence", verifications))
         (folder / "results.json").write_text(json.dumps(runs, indent=2, default=str))
         record.update(status="failed" if result.failed else "completed", results=[{k: v for k, v in r.items() if k != "context"} for r in runs])

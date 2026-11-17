@@ -39,6 +39,8 @@ def prepare_workspace(folder, batch, *, root=None):
                     step["artifact_version"] = Artifact.get(step["artifact_id"]).version
             task.write_text(json.dumps(steps, indent=2) + "\n")
     digest = hashlib.sha256()
+    if batch.get("custom_rubric"):
+        digest.update(json.dumps(batch["custom_rubric"], sort_keys=True).encode())
     for path in sorted(workspace.rglob("*")):
         if path.is_file() and "__pycache__" not in path.parts:
             digest.update(str(path.relative_to(workspace)).encode())
@@ -47,7 +49,7 @@ def prepare_workspace(folder, batch, *, root=None):
     return workspace
 
 
-def prepare_trial(folder, workspace, pipeline):
+def prepare_trial(folder, workspace, pipeline, custom_rubric=None):
     """A separate bundle namespace and instance-derived snapshot IDs per trial."""
     bundle = folder / "bundle"
     shutil.copytree(workspace / PIPELINES[pipeline]["bundle"], bundle, dirs_exist_ok=True,
@@ -58,6 +60,19 @@ def prepare_trial(folder, workspace, pipeline):
             if step["type"] == "snapshot_env":
                 step.pop("snapshot_id", None)  # AEF derives it from the unique run instance.
         path.write_text(json.dumps(steps, indent=2) + "\n")
+    if custom_rubric:
+        from webapp.custom_rubrics import apply_rubric
+        # Bind the allowlist to the same frozen workspace as the task. A source
+        # checkout rebuild cannot change validation underneath an active batch.
+        apply_rubric(bundle, custom_rubric, root=workspace)
+        for path in (bundle / "tasks").glob("*.json"):
+            steps = json.loads(path.read_text())
+            for step in steps:
+                if step["type"] == "prompt_agent":
+                    step.update(max_turns=20, timeout_seconds=600)
+                elif step["type"] == "rubrics_verifier":
+                    step["judge_timeout_seconds"] = 120
+            path.write_text(json.dumps(steps, indent=2) + "\n")
     return bundle
 
 
@@ -98,7 +113,12 @@ def coordinate(batch_id):
                 while pending and len(children) < batch["concurrency"] and not stopped:
                     run_id = pending.pop(0)
                     rec = read(STATE / run_id)
-                    bundle = prepare_trial(STATE / run_id, workspace, rec["pipeline"])
+                    if batch.get("custom_rubric"):
+                        bundle = prepare_trial(STATE / run_id, workspace, rec["pipeline"], batch["custom_rubric"])
+                    else:
+                        bundle = prepare_trial(STATE / run_id, workspace, rec["pipeline"])
+                    if batch.get("custom_rubric"):
+                        rec["custom_rubric"] = batch["custom_rubric"]
                     rec.update(workspace_path=str(workspace), bundle_path=str(bundle), message="Starting isolated trial")
                     save(STATE / run_id, rec)
                     log = (STATE / run_id / "output.log").open("w")

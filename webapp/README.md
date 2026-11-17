@@ -1,5 +1,18 @@
 # Cyber Eval Console
 
+## Uploaded rubric (bounded v1)
+
+Expand **Upload a rubric (JSON)**, download the template, choose approved check IDs
+and weights, then upload it. Supported scenarios are focused triage/report only;
+the matching scenario is selected automatically. See `examples/triage-rubric.json`
+and `/api/rubrics/catalog`. Custom runs allow up to 3 trials and add a supplemental
+deterministic grade; trusted scenario grading and LLM judge policy stay unchanged.
+Both trusted and custom scores must meet the success threshold. Invalid uploads
+block launch until removed or replaced. No arbitrary prompts, code, infrastructure,
+tool definitions, URLs, datasets or judge instructions are accepted.
+
+Limits and adversarial test methodology: [custom rubric uploads](../docs/custom-rubric-uploads.md).
+
 ## Batch evaluations and repeated trials
 
 The **Run scenario** tab has one launch form. Optional settings enable repeated

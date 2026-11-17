@@ -9,6 +9,7 @@ HOST_FILES = (
     + list(REPO.glob("pipelines/*/soc-eval/artifacts/*/run.py")) + list(REPO.glob("soc-env/*/artifacts/*/run.py"))
     + list(REPO.glob("pipelines/*/build.py")) + list(REPO.glob("pipelines/*/export_run.py"))
     + list(REPO.glob("pipelines/shared/*/run.py"))
+    + list(REPO.glob("webapp/custom_rubrics.py"))
 )
 BANNED_CALLS = {"exec", "eval", "compile", "__import__"}
 BANNED_MODULES = {"subprocess", "runpy", "pty", "ctypes"}

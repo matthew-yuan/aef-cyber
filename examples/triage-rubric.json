@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "scenario": "triage",
+  "title": "Intrusion and authorized activity triage",
+  "checks": [
+    {"id": "triage-1001-fp", "weight": 1},
+    {"id": "triage-1002-tp", "weight": 2},
+    {"id": "triage-1006-tp", "weight": 2},
+    {"id": "process-read-changes", "weight": 1}
+  ]
+}

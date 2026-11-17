@@ -37,13 +37,15 @@ def alive(pid):
         return False
 
 
-def create_batch(pipelines, k, concurrency, model, judge_model, success_threshold, *, state=None, root=None):
+def create_batch(pipelines, k, concurrency, model, judge_model, success_threshold, *, state=None, root=None, custom_rubric=None):
     state, root = state or STATE, root or ROOT
     batch_id = uuid.uuid4().hex
     folder = state / "batches" / batch_id
     batch = {"id": batch_id, "pipelines": pipelines, "k": k, "concurrency": concurrency,
              "model": model, "judge_model": judge_model, "success_threshold": success_threshold,
              "status": "queued", "created_at": now(), "run_ids": []}
+    if custom_rubric:
+        batch["custom_rubric"] = custom_rubric
     for trial in range(1, k + 1):
         for pipeline in pipelines:
             run_id = uuid.uuid4().hex
@@ -87,6 +89,10 @@ def trial_success(record, threshold):
                     return False
         scores = dict(result.get("scores") or {})
         scores = {**{key: value.get("score") for key, value in verifications.items()}, **scores}
+        if record.get("custom_rubric"):
+            custom_score = scores.get("custom-rubric")
+            if not isinstance(custom_score, (int, float)) or not math.isfinite(custom_score) or custom_score <= 0 or custom_score < threshold:
+                return False
         # Step-ID keyed AEF scores are supplemented with verifier-ID scores.
         if any(row.get("critical") and row.get("result") is not True
                for verification in verifications.values() for row in verification.get("results", [])):

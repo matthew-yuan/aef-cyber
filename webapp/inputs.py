@@ -29,6 +29,9 @@ def run_inputs(folder, record, root):
     saved = folder / "inputs.json"
     payload = json.loads(saved.read_text()) if saved.exists() else scenario_inputs(record["pipeline"])
     payload["items"] = list(payload["items"])
+    if record.get("custom_rubric"):
+        payload["items"].append({"name": "Uploaded supplemental rubric (grader only; not sent to agents or LLM judges)",
+                                 "phase": "custom-rubric", "content": json.dumps(record["custom_rubric"], indent=2)})
     export = (root / record.get("export_path", "")).resolve()
     if record.get("export_path") and export.is_relative_to((root / "runs").resolve()):
         for path in sorted((export / "trajectories").glob("*.json")):

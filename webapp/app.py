@@ -66,6 +66,40 @@ class BatchLaunch(BaseModel):
     model: str = ""
     judge_model: str = ""
     success_threshold: float = Field(default=.8, ge=0, le=1)
+    rubric_id: str = Field(default="", max_length=64, pattern=r"^[a-f0-9]*$")
+
+
+@app.get("/api/rubrics/catalog")
+def rubric_catalog():
+    from webapp.custom_rubrics import catalog
+    return catalog()
+
+
+@app.post("/api/rubrics", status_code=201)
+async def upload_rubric(request: Request):
+    from webapp.custom_rubrics import validate_upload, MAX_BYTES
+    raw = bytearray()
+    async for chunk in request.stream():
+        if len(raw) + len(chunk) > MAX_BYTES:
+            raise HTTPException(413, "Rubric exceeds 16 KB")
+        raw.extend(chunk)
+    try:
+        rubric = validate_upload(bytes(raw))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    folder = STATE / "rubrics"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / (rubric["sha256"] + ".json")
+    if not path.exists():
+        with launch_guard():
+            if len(list(folder.glob("*.json"))) >= 100:
+                raise HTTPException(429, "Saved rubric limit (100) reached")
+            temporary = folder / (uuid.uuid4().hex + ".tmp")
+            temporary.write_text(json.dumps(rubric, indent=2))
+            temporary.replace(path)
+    return {"id": rubric["sha256"], "scenario": rubric["scenario"], "title": rubric["title"],
+            "checks": len(rubric["checks"]), "scope": "Supplemental observable checks; trusted grading stays unchanged",
+            "limits": {"max_trials": 3, "max_turns": 20, "phase_timeout_seconds": 600}}
 
 
 def validate_models(model, judge):
@@ -95,6 +129,22 @@ def launch_batch(body: BatchLaunch):
             raise HTTPException(422, "Select distinct known scenarios")
         if len(body.pipelines) * body.k > 40:
             raise HTTPException(422, "A batch may contain at most 40 trials")
+        custom = None
+        if body.rubric_id:
+            from webapp.custom_rubrics import validate_upload
+            path = STATE / "rubrics" / (body.rubric_id + ".json")
+            if not path.is_file():
+                raise HTTPException(422, "Upload and validate a rubric first")
+            try:
+                data = json.loads(path.read_text())
+                data.pop("sha256", None)
+                custom = validate_upload(json.dumps(data).encode())
+            except (ValueError, AttributeError):
+                raise HTTPException(422, "Stored rubric is invalid; upload again") from None
+            if custom["sha256"] != body.rubric_id:
+                raise HTTPException(422, "Stored rubric integrity check failed")
+            if body.pipelines != [custom["scenario"]] or body.k > 3:
+                raise HTTPException(422, "Uploaded rubrics run only their matching scenario, at most 3 trials")
         if any(b["status"] in ("queued", "running") for b in batches()) or any(r["status"] in ("queued", "running") for r in runs()):
             raise HTTPException(409, "A dashboard run or batch is already active")
         model, judge = body.model, body.judge_model
@@ -105,7 +155,7 @@ def launch_batch(body: BatchLaunch):
             model, judge = defaults["analyst_model"], defaults["judge_model"]
         # Scheduling is internal; users choose what to evaluate, not worker counts.
         return create_batch(body.pipelines, body.k, 2, model, judge, body.success_threshold,
-                            state=STATE, root=ROOT)
+                            state=STATE, root=ROOT, custom_rubric=custom)
 
 
 def folder_for(run_id):
