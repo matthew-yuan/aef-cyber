@@ -216,8 +216,13 @@ def scenario_rubric(pipeline: str):
 
 @app.get("/api/models/config")
 def model_config():
-    endpoint = os.getenv("LITELLM_BASE_URL", "")
-    return {"ready": bool(endpoint and os.getenv("LITELLM_API_KEY")),
+    from webapp.models import coordinates
+    try:
+        endpoint, _, _ = coordinates()
+        ready = True
+    except ValueError:
+        endpoint, ready = "", False
+    return {"ready": ready,
             "endpoint": urlsplit(endpoint).netloc.rsplit("@", 1)[-1],
             "analyst_model": os.getenv("CYBER_ANALYST_MODEL", "openai/openai/gpt-5"),
             "judge_model": os.getenv("CYBER_JUDGE_MODEL", "openai/openai/gpt-6-sol")}

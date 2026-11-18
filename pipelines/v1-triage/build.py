@@ -18,7 +18,7 @@ REPO = HERE.parent.parent
 
 SOC_VERSION = None         # soc-env/soc/: None deploys the latest registered version; set a number to pin one
 SEED_ARTIFACT = "soc-sample"  # soc-env/data/incident.json as a universe
-AGENT_VERSION = int(os.getenv("CYBER_AGENT_VERSION", "2"))  # LiteLLM-compatible agents/sgp-agent
+AGENT_VERSION = int(os.getenv("CYBER_AGENT_VERSION", "3"))  # LiteLLM-compatible agents/sgp-agent
 ANALYST_MODEL = os.getenv("CYBER_ANALYST_MODEL", "openai/openai/gpt-5")
 JUDGE_MODEL = os.getenv("CYBER_JUDGE_MODEL", "openai/openai/gpt-6-sol")  # Must support strict JSON-schema output.
 CONVERSATION = "analyst"   # both prompts share it, so the analyst carries its triage into the report

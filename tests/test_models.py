@@ -17,6 +17,13 @@ def test_agent_removes_exactly_one_routing_prefix():
     assert route("openai/anthropic/claude-sonnet") == "anthropic/claude-sonnet"
 
 
+def test_agent_retries_empty_model_responses():
+    source = (REPO / "agents/sgp-agent/agent.py").read_text()
+    assert 'if not answer.strip():' in source
+    assert '"type": "empty_response"' in source
+    assert "Your previous response was empty" in source
+
+
 def test_all_pipeline_model_defaults(monkeypatch):
     monkeypatch.delenv("CYBER_ANALYST_MODEL", raising=False)
     monkeypatch.delenv("CYBER_JUDGE_MODEL", raising=False)
@@ -26,5 +33,7 @@ def test_all_pipeline_model_defaults(monkeypatch):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         steps = module.task()
+        analyst = next(s for s in steps if s["type"] == "deploy_agent")
+        assert analyst["a2a_agent_version"] == 3
         assert all(s["model"] == "openai/openai/gpt-5" for s in steps if s["type"] == "prompt_agent")
         assert all(s["default_model"] == "openai/openai/gpt-6-sol" for s in steps if s["type"] == "rubrics_verifier")

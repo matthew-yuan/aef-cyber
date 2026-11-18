@@ -97,7 +97,8 @@ worker process is alive, not that the model has returned; phase completion still
 Analyst-model overrides
 change the evaluated model; the separate judge field changes all rubric judges. Full evaluations spend LiteLLM model budget using the
 credentials inherited from the server's shell. On this branch inference uses the remote LiteLLM proxy,
-GPT-5 analysts and GPT-6-Sol judges, with `LITELLM_API_KEY` and `LITELLM_BASE_URL` exported before startup.
+GPT-5 analysts and GPT-6-Sol judges. Export `LITELLM_API_KEY` before startup; the endpoint resolves from
+`.agentenv/config.toml` unless `LITELLM_BASE_URL` overrides it.
 Docker and the main README's registrations are required.
 
 ## Test scenarios

@@ -56,8 +56,8 @@ def main(run_id):
 
     try:
         if pipeline["model"]:
-            if not os.getenv("LITELLM_BASE_URL") or not os.getenv("LITELLM_API_KEY"):
-                raise ValueError("Export LITELLM_BASE_URL and LITELLM_API_KEY in the dashboard server's shell first")
+            from webapp.models import coordinates
+            coordinates()
             model = record.get("model") or os.getenv("CYBER_ANALYST_MODEL", "openai/openai/gpt-5")
             judge = record.get("judge_model") or os.getenv("CYBER_JUDGE_MODEL", "openai/openai/gpt-6-sol")
             os.environ.update(CYBER_ANALYST_MODEL=model, CYBER_JUDGE_MODEL=judge)

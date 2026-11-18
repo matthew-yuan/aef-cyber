@@ -1,5 +1,6 @@
 import json
 import httpx
+from types import SimpleNamespace
 from webapp import models
 
 
@@ -14,6 +15,20 @@ def test_saved_models_shared_and_no_network_on_reads(tmp_path, monkeypatch):
         {"id": "openai/openai/gpt-5", "name": "openai/gpt-5"},
         {"id": "openai/openai/gpt-6-sol", "name": "openai/gpt-6-sol"}]
     assert "secret" not in path.read_text()
+
+
+def test_coordinates_use_agentenv_config_when_endpoint_env_is_absent(tmp_path, monkeypatch):
+    import agent_env.config
+
+    monkeypatch.delenv("LITELLM_BASE_URL", raising=False)
+    monkeypatch.setattr(models, "STATE", tmp_path)
+    monkeypatch.setattr(agent_env.config, "get_config", lambda: SimpleNamespace(
+        get_litellm_base_url=lambda: "https://configured.example/v1/",
+        get_litellm_api_key=lambda: "configured-secret"))
+    endpoint, key, path = models.coordinates()
+    assert endpoint == "https://configured.example/v1"
+    assert key == "configured-secret"
+    assert path.parent == tmp_path / "models"
 
 
 def test_scan_resumes_and_excludes_non_chat(tmp_path, monkeypatch):

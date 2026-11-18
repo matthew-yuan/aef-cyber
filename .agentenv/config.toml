@@ -1,6 +1,6 @@
 # agent-env config for running locally against an OpenAI-compatible LiteLLM proxy.
 # All stores and sandboxes are local (state lives under ~/.local/state/agent-env/).
-# Export LITELLM_BASE_URL and LITELLM_API_KEY before running. No credentials are stored here.
+# Export LITELLM_API_KEY before running. The endpoint is configured below; no credentials are stored here.
 
 [stores]
 document = "local"   # SQLite      ~/.local/state/agent-env/document_store/documents.db

@@ -112,6 +112,13 @@ class SGPAgent(AgentEnvAgent):
                     turn.append({"type": "thought", "text": reply.content})
                 if not calls:
                     answer = reply.content or ""
+                    if not answer.strip():
+                        turn.append({"type": "empty_response", "finish_reason": choice.finish_reason})
+                        messages.append({
+                            "role": "user",
+                            "content": "Your previous response was empty. Complete the requested task and make any required submission before answering.",
+                        })
+                        continue
                     turn.append({"type": "answer", "text": answer, "finish_reason": choice.finish_reason})
                     return (
                         TaskResult.builder()

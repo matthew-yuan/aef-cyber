@@ -4,7 +4,6 @@
     uv run python model_smoke_test.py openai/<proxy-model-id>
 """
 import argparse
-import os
 
 import httpx
 import litellm
@@ -16,12 +15,11 @@ def main():
     parser.add_argument("model", nargs="?", default="openai/openai/gpt-5")
     parser.add_argument("--list", action="store_true")
     args = parser.parse_args()
-    if not os.getenv("LITELLM_BASE_URL") or not os.getenv("LITELLM_API_KEY"):
-        parser.error("Export LITELLM_BASE_URL and LITELLM_API_KEY first")
-    call = get_config().resolve_model_call(args.model)
+    config = get_config()
+    call = config.resolve_model_call(args.model)
     if args.list:
         response = httpx.get(f"{call.api_base.rstrip('/')}/models", timeout=30,
-                             headers={"Authorization": "Bearer " + os.environ["LITELLM_API_KEY"]})
+                             headers={"Authorization": "Bearer " + config.get_litellm_api_key()})
         response.raise_for_status()
         for model in response.json().get("data", []):
             print(model["id"])

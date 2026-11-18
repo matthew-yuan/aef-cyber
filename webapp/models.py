@@ -12,10 +12,16 @@ _lock = Lock()
 
 
 def coordinates():
-    endpoint = os.getenv("LITELLM_BASE_URL", "").rstrip("/")
-    key = os.getenv("LITELLM_API_KEY", "")
+    from agent_env.config import ConfigError, get_config
+
+    config = get_config()
+    try:
+        endpoint = config.get_litellm_base_url().rstrip("/")
+        key = config.get_litellm_api_key()
+    except ConfigError:
+        endpoint, key = "", ""
     if not endpoint or not key:
-        raise ValueError("Configure LITELLM_BASE_URL and LITELLM_API_KEY")
+        raise ValueError("Configure the model endpoint and API key in .agentenv/config.toml or LITELLM_* variables")
     # Scope by credentials without persisting the key or its unsalted hash.
     scope = hashlib.sha256((endpoint + "\0" + key).encode()).hexdigest()
     return endpoint, key, STATE / "models" / f"{scope}.json"
