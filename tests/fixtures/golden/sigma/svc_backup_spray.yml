@@ -1,0 +1,10 @@
+title: Network logon failures for a service account
+level: medium
+tags: [attack.credential_access, attack.t1110.003]
+logsource: {category: authentication}
+detection:
+  selection:
+    user: svc_*
+    logon_type: network
+    result: failure
+  condition: selection

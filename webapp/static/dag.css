@@ -1,0 +1,37 @@
+/* The navigation is also the workflow map. Wide DAGs scroll within the rail. */
+.dag-modes{display:flex;gap:4px;padding:4px;background:#0d1520;border:1px solid #293b4d;border-radius:8px;margin:0 0 12px;flex-shrink:0}
+.dag-modes button{flex:1;background:transparent;color:#8fa6bd;font-size:11px;padding:9px 6px;font-weight:500}
+.dag-modes button.active{background:#263e50;color:#dcf8ef}
+.phase-list{padding:14px 12px}
+.phase-card{display:flex;gap:12px;text-align:left;width:100%;position:relative;border:1px solid #33495f;background:#172433;color:#d7e7f2;padding:13px 11px;border-radius:9px;margin-bottom:23px;font-weight:400}
+.phase-card:not(:last-child)::after{content:'↓';position:absolute;bottom:-22px;left:22px;font-size:16px;color:#7899ac}
+.phase-card:last-child{margin-bottom:0}.phase-number{flex-shrink:0;display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#293e50;font:11px system-ui;color:#a8c0d3}
+.phase-card strong{display:block;font-size:13px;font-weight:600;line-height:1.5}.phase-card small{display:block;font-size:11px;line-height:1.6;color:#92aabd;margin-top:4px}.phase-card em{display:block;font-size:10px;font-style:normal;color:#89a5b9;margin-top:8px}
+.phase-card.completed{border-color:#2f6e59;background:#132c26}.phase-card.completed .phase-number{background:#225441;color:#88edc1}.phase-card.running{border-color:#73bcf5;background:#17324a}.phase-card.running em{color:#9ed4ff}.phase-card.failed{border-color:#d77e8d}.phase-card:hover,.phase-card:focus,.phase-card.focused{outline:1px solid #c1e2ef;outline-offset:1px}
+aside{width:360px;padding:25px 18px;display:flex;flex-direction:column}
+main{margin-left:360px;width:calc(100% - 360px);padding:34px 30px}
+.nav{margin-top:25px;flex-shrink:0}
+.foot{position:static;padding:15px 4px 0;margin-top:auto;flex-shrink:0}
+.dag-panel{display:flex;flex-direction:column;min-height:0;flex:1;margin-top:26px}
+.dag-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;font:10px 'IBM Plex Mono',monospace;letter-spacing:1.5px;color:#839cb2}
+.dag-heading button{font-size:10px;background:#223244;color:#a9d7eb;padding:6px 9px;font-weight:500}
+#dag-title{font-size:14px;color:#e0ebf5;margin:0 0 3px}
+#dag-caption{font-size:10px;line-height:1.6;margin:0;color:#7e94aa}
+.dag-legend{display:flex;gap:15px;font-size:10px;color:#71869b;margin:13px 0}
+.dag-legend .completed{color:#61d8b4}.dag-legend .running{color:#86c5ff}
+.dag-scroll{overflow:auto;min-height:180px;flex:1;border:1px solid #253245;border-radius:9px;background:radial-gradient(circle,#263549 1px,transparent 1px) 0 0/16px 16px,#0d1520;scrollbar-width:thin;scrollbar-color:#354d64 transparent}
+.dag-scroll svg{display:block;max-width:none}
+.dag-edge{fill:none;stroke:#3a4f63;stroke-width:1.3;opacity:.8}.dag-edge.done{stroke:#4d9c85;opacity:.9}
+.dag-node{cursor:pointer;outline:none}.dag-node rect{fill:#162231;stroke:#35495e;stroke-width:1}
+.dag-node text{fill:#c9d9e8;font:8.5px system-ui,sans-serif;pointer-events:none}
+.dag-node .dag-kind{fill:#7891a7;font:7px system-ui,sans-serif;letter-spacing:.2px}
+.dag-node .dag-icon{font-size:11px;fill:#71869a}
+.dag-node.completed rect{fill:#123329;stroke:#337b65}.dag-node.completed .dag-icon{fill:#6af0bb}
+.dag-node.running rect{fill:#173754;stroke:#67b9ff;stroke-width:1.8;filter:drop-shadow(0 0 5px #2186db55)}
+.dag-node.running .dag-icon{fill:#9ad3ff}.dag-node.failed rect{fill:#40232b;stroke:#ef8a9f}
+.dag-node:hover rect,.dag-node:focus rect,.dag-node.focused rect{stroke:#d0e6fb;stroke-width:1.8}
+#dag-inspector{min-height:65px;max-height:130px;overflow:auto;white-space:pre-wrap;font:10px/1.7 'IBM Plex Mono',monospace;color:#90a9c0;border-left:2px solid #3e796d;padding:9px 10px;margin-top:12px;overflow-wrap:anywhere}
+.workspace{grid-template-columns:280px minmax(0,1fr)}
+form{flex-wrap:wrap}select,input{max-width:225px}
+@media(max-width:1250px){aside{width:320px}main{margin-left:320px;width:calc(100% - 320px);padding:25px 20px}.workspace{grid-template-columns:1fr}.history{max-height:270px;overflow:auto}.stats{gap:10px}.stats>div{padding:15px}.stats small{font-size:8px}}
+@media(max-width:760px){body{display:block}aside{position:relative;display:flex;width:100%;height:auto;padding:18px;border-right:0;border-bottom:1px solid #26303d}.nav,.foot{display:none}.dag-panel{margin-top:20px;flex:none}.dag-scroll{height:260px;flex:none}#dag-inspector{min-height:45px;max-height:85px}.dag-scroll svg{margin:0 auto}main{margin:0;width:100%;padding:20px}.workspace{grid-template-columns:1fr}select,input{max-width:100%}.launch form{display:grid;width:100%}.local{display:none}}

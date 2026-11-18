@@ -1,0 +1,29 @@
+{
+  "inject": {
+    "id": "UPDATE-01",
+    "title": "Late-arriving endpoint and egress telemetry",
+    "issued_at": "2026-11-06T15:00:00Z",
+    "summary": "A delayed sensor batch and CPT bulletin have arrived. Review ALT-1007, the new records for WS-G1-007, INT-26-032, and the existing playbook. Revise the incident report against the expanded picture. Earlier records remain valid; no containment action has been executed by this simulation."
+  },
+  "metadata": {"current_time": "2026-11-06T15:00:00Z"},
+  "alerts": [
+    {"id": "ALT-1007", "time": "2026-11-06T14:45:00Z", "source": "Delayed endpoint telemetry", "severity": "high", "title": "Remote service installation followed by external beacon", "host": "WS-G1-007", "user": "svc_backup", "status": "new", "description": "Delayed telemetry reports a remote logon, service installation and periodic HTTPS connections. Correlate the auth, endpoint, DNS and proxy records before updating scope.", "indicators": ["cdn-telemetry.updatesvc.example", "203.0.113.155"]}
+  ],
+  "logs": {
+    "auth": [
+      {"id": "auth-upd-001", "time": "2026-11-06T14:35:00Z", "host": "WS-G1-007", "user": "svc_backup", "event": "logon", "logon_type": "network", "result": "success", "src": "198.51.100.22", "detail": "Remote admin access from SRV-WEB-02, followed by service installation."}
+    ],
+    "endpoint": [
+      {"id": "endpoint-upd-001", "time": "2026-11-06T14:36:00Z", "host": "WS-G1-007", "user": "SYSTEM", "event": "service_install", "process": "services.exe", "parent": "wininit.exe", "path": "C:\\Windows\\Temp\\odsh.exe", "detail": "UpdateSvcHelper installed after svc_backup's remote logon from SRV-WEB-02."}
+    ],
+    "dns": [
+      {"id": "dns-upd-001", "time": "2026-11-06T14:40:00Z", "host": "WS-G1-007", "query": "cdn-telemetry.updatesvc.example", "answer": "203.0.113.155", "detail": "New destination on this host; repeats every 300 seconds."}
+    ],
+    "proxy": [
+      {"id": "proxy-upd-001", "time": "2026-11-06T14:40:01Z", "host": "WS-G1-007", "user": "SYSTEM", "method": "POST", "url": "https://cdn-telemetry.updatesvc.example/api/v1/ping", "dest_ip": "203.0.113.155", "status": 200, "bytes_out": 312, "bytes_in": 96, "detail": "Periodic beacon. No bulk upload or personnel-data exfiltration is observed in this batch."}
+    ]
+  },
+  "intel": [
+    {"id": "INT-26-032", "time": "2026-11-06T14:55:00Z", "title": "CINDER KESTREL fallback infrastructure confirmed", "source": "Regional CPT (fictional)", "summary": "The fallback domain cdn-telemetry.updatesvc.example now resolves to 203.0.113.155. This confirms the fallback configuration recovered in EV-07. Preserve the original C2 blocks; add the fallback domain and address. The delayed workstation records establish lateral movement, not proof that personnel data was exfiltrated. No evidence in this update compromises SRV-DC-01 or connects the benefits-phishing click to this intrusion.", "indicators": [{"type": "domain", "value": "cdn-telemetry.updatesvc.example"}, {"type": "ipv4", "value": "203.0.113.155"}], "recommended_actions": ["Isolate WS-G1-007 and capture memory and disk evidence.", "Reset svc_backup and preserve the existing response actions.", "Report expanded scope to the G-6 and CPT; retain G-3 escalation for the original PLANS loss."]}
+  ]
+}

@@ -1,0 +1,10 @@
+title: Beacon to the ODSH C2 endpoint
+level: critical
+tags: [attack.command_and_control, attack.t1071.001]
+logsource: {service: proxy}
+detection:
+  domain:
+    url|contains: updatesvc.example
+  ping:
+    url|endswith: /api/v1/ping
+  condition: domain and ping

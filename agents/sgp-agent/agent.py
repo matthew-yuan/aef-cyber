@@ -1,4 +1,4 @@
-"""sgp-agent: a tool-using A2A agent that calls models on Scale GenAI Platform (SGP).
+"""sgp-agent: a tool-using A2A agent that calls an OpenAI-compatible model gateway.
 
 One image serves every role in the SOC eval (analyst, and any judge or reporter agent): the task gives
 each deployment its role, system prompt and model. It works the tools of every env it is handed,
@@ -33,10 +33,9 @@ CONVERSATIONS: dict[str, list] = {}
 
 
 def sgp_model_name(model: str) -> str:
-    """SGP names models provider/model ("openai/gpt-4o"). agent-env's config holds LiteLLM names, which
-    add a routing prefix ("openai/openai/gpt-4o"); drop it so this client sends SGP's own name."""
+    """Remove AEF's single openai/ routing prefix, retaining the proxy's exact model alias."""
     head, _, rest = model.partition("/")
-    return rest if head == "openai" and "/" in rest else model
+    return rest if head == "openai" and rest else model
 
 
 def model_client() -> AsyncOpenAI:
@@ -113,6 +112,13 @@ class SGPAgent(AgentEnvAgent):
                     turn.append({"type": "thought", "text": reply.content})
                 if not calls:
                     answer = reply.content or ""
+                    if not answer.strip():
+                        turn.append({"type": "empty_response", "finish_reason": choice.finish_reason})
+                        messages.append({
+                            "role": "user",
+                            "content": "Your previous response was empty. Complete the requested task and make any required submission before answering.",
+                        })
+                        continue
                     turn.append({"type": "answer", "text": answer, "finish_reason": choice.finish_reason})
                     return (
                         TaskResult.builder()

@@ -1,0 +1,162 @@
+[
+  {
+    "id": "soc-env",
+    "type": "deploy_env",
+    "env_id": "soc",
+    "sandbox_type": "local",
+    "depends_on": []
+  },
+  {
+    "id": "soc-seed",
+    "type": "load_artifact",
+    "env_id": "soc",
+    "artifact_id": "soc-sample",
+    "depends_on": [
+      {
+        "task_step_id": "soc-env"
+      }
+    ]
+  },
+  {
+    "id": "soc-check",
+    "type": "env_outcome_verifier",
+    "env_id": "soc",
+    "file_artifact_id": "check_soc",
+    "verifier_id": "soc-smoke",
+    "depends_on": [
+      {
+        "task_step_id": "soc-seed"
+      }
+    ]
+  },
+  {
+    "id": "lab-lab",
+    "type": "deploy_env",
+    "env_id": "lab",
+    "sandbox_type": "local",
+    "depends_on": []
+  },
+  {
+    "id": "lab-seed",
+    "type": "load_artifact",
+    "env_id": "lab",
+    "artifact_id": "lab-sample",
+    "depends_on": [
+      {
+        "task_step_id": "lab-lab"
+      }
+    ]
+  },
+  {
+    "id": "lab-check",
+    "type": "env_outcome_verifier",
+    "env_id": "lab",
+    "file_artifact_id": "check_lab",
+    "verifier_id": "lab-smoke",
+    "depends_on": [
+      {
+        "task_step_id": "lab-seed"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-seed",
+    "type": "load_artifact",
+    "env_id": "soc",
+    "artifact_id": "soc-sample",
+    "depends_on": [
+      {
+        "task_step_id": "soc-check"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-submit",
+    "type": "run_code",
+    "env_id": "soc",
+    "script_artifact_id": "soc_ops",
+    "args": {
+      "set": "golden"
+    },
+    "depends_on": [
+      {
+        "task_step_id": "scorebox-seed"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-snap-final",
+    "type": "snapshot_env",
+    "env_id": "soc",
+    "snapshot_id": "scorebox-smoke-final",
+    "depends_on": [
+      {
+        "task_step_id": "scorebox-submit"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-scorebox-vm",
+    "type": "deploy_sandbox",
+    "sandbox_name": "scorebox",
+    "sandbox_mode": "vm",
+    "ttl_seconds": 1800,
+    "depends_on": []
+  },
+  {
+    "id": "scorebox-scorebox-ctr",
+    "type": "run_docker_container",
+    "sandbox_name": "scorebox",
+    "docker_context_artifact_id": "scorebox_context",
+    "container_name": "scorebox",
+    "network": "none",
+    "env_vars": {},
+    "depends_on": [
+      {
+        "task_step_id": "scorebox-scorebox-vm"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-handoff",
+    "type": "load_artifact",
+    "sandbox_name": "scorebox",
+    "container_name": "scorebox",
+    "artifact_from_step_id": "scorebox-snap-final",
+    "destination_path": "/handoff",
+    "depends_on": [
+      {
+        "task_step_id": "scorebox-snap-final"
+      },
+      {
+        "task_step_id": "scorebox-scorebox-ctr"
+      }
+    ]
+  },
+  {
+    "id": "scorebox-exec-tests",
+    "type": "run_container_unit_tests_verifier",
+    "verifier_id": "exec-tests",
+    "sandbox_name": "scorebox",
+    "container_name": "scorebox",
+    "user": "runner",
+    "command": "python3 -I /harness/run_tests.py --handoff /handoff --data /harness/data --out /work/out --work /work/runs",
+    "timeout_sec": 300,
+    "env_vars": {
+      "LITELLM_API_KEY": "",
+      "ANTHROPIC_API_KEY": "",
+      "LITELLM_BASE_URL": "",
+      "ANTHROPIC_BASE_URL": "",
+      "LITELLM_EXTRA_HEADERS": "{}"
+    },
+    "result_paths": [
+      "/work/out/results.json"
+    ],
+    "reward_path": "/work/out/reward.txt",
+    "depends_on": [
+      {
+        "task_step_id": "scorebox-handoff"
+      }
+    ]
+  }
+]

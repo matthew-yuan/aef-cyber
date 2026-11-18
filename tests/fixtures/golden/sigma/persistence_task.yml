@@ -1,0 +1,11 @@
+title: Scheduled task created from a user-writable path
+level: high
+tags: [attack.persistence, attack.t1053.005]
+logsource: {category: process_creation}
+detection:
+  selection:
+    Image|endswith: schtasks.exe
+    CommandLine|contains|all:
+      - /Create
+      - \Users\Public\
+  condition: selection

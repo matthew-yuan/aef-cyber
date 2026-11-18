@@ -1,0 +1,9 @@
+title: Service installed from the Temp folder
+level: high
+tags: [attack.persistence, attack.t1543.003]
+logsource: {category: service_installation}
+detection:
+  selection:
+    event: service_install
+    path|contains: \Temp\
+  condition: selection

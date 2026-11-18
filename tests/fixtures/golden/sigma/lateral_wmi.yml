@@ -1,0 +1,9 @@
+title: Remote process creation over WMI
+level: high
+tags: [attack.lateral_movement, attack.t1047]
+logsource: {category: process_creation}
+detection:
+  selection:
+    process: wmic.exe
+    command_line|contains: '/node:'
+  condition: selection

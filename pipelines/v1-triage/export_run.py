@@ -22,6 +22,9 @@ from pathlib import Path
 
 import build
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import grading  # noqa: E402
+
 sys.path.insert(0, str(build.HERE / "soc-eval" / "artifacts" / "check_facts"))
 import verify  # noqa: E402  (check_facts/verify.py, the code checks)
 
@@ -128,7 +131,7 @@ def level(score: float) -> int:
 
 
 def weighted(rows: list[dict]) -> float:
-    scored = [r for r in rows if r.get("weight")]
+    scored = [r for r in rows if r.get("weight", 0) > 0]
     return sum(r["weight"] for r in scored if r["result"]) / sum(r["weight"] for r in scored) if scored else 0.0
 
 
@@ -138,7 +141,7 @@ def scorecard(instance_id: str, record: dict, models: dict, current_rows: list[d
     overall = verifications.get("soc-v1", {})
     stored_rows = facts.get("results", [])
     rescored = [(r["id"], r["result"]) for r in stored_rows] != [(r["id"], r["result"]) for r in current_rows]
-    scored = [r for r in current_rows if r.get("weight")]
+    scored = [r for r in current_rows if r.get("weight", 0) > 0]
     lines = ["# Scorecard: v1 alert triage and incident report", "", f"Run `{instance_id}`", "",
              f"Analyst model `{models['analyst']}`; judge model `{models['judge']}`.", "",
              "| Score | Value |", "| --- | --- |",
@@ -147,6 +150,10 @@ def scorecard(instance_id: str, record: dict, models: dict, current_rows: list[d
     for step, title in [("judge-triage", "Judge: triage"), ("judge-report", "Judge: incident report")]:
         lines.append(f"| {title} | {verifications.get(step, {}).get('score', 0):.2f} |")
     lines.append("")
+    failed_actions = [r for r in current_rows if r.get("action_gate") and not r.get("result")]
+    if failed_actions:
+        lines += ["**Action verification failure: mission score 0.00.** Required products were not accepted.", ""]
+    lines += grading.summary(overall.get("score", 0), current_rows)
     if rescored:
         lines += ["The current code checks score differently from the ones the run stored; the tables below use the current checks.", ""]
     if models["analyst"] == models["judge"]:

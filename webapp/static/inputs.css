@@ -1,0 +1,4 @@
+#agent-inputs{margin-top:24px;margin-bottom:24px;padding-top:6px;border-top:1px solid #283445}
+#agent-inputs details{margin-top:12px;border:1px solid #344357;border-radius:7px;padding:10px}
+#agent-inputs summary{cursor:pointer;color:#c8d9e8;font-size:13px}
+#agent-inputs pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;background:#0e1520;padding:14px;font-size:12px;line-height:1.6}

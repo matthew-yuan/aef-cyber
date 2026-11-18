@@ -9,3 +9,9 @@ __pycache__/
 
 # macOS
 .DS_Store
+
+# pytest
+.pytest_cache/
+
+# Local dashboard run index, execution logs and browser test artifacts
+.dashboard/

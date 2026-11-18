@@ -21,6 +21,15 @@ from mcp.client.streamable_http import streamable_http_client
 
 FACTS_WEIGHT_TOTAL = 6
 
+# The largest pipeline has total positive weight 12 (v1). One failed gate must
+# outweigh every other earned point, including judge scores, in v1/v2/v3.
+CRITICAL_PENALTY = 12.0
+CRITICAL_CHECKS = {
+    "report-host-ws-g3-014": "Missed confirmed compromise of WS-G3-014",
+    "report-host-srv-file-01": "Missed confirmed compromise of SRV-FILE-01",
+    "report-host-srv-web-02": "Missed confirmed compromise of SRV-WEB-02",
+}
+
 ALERTS = ["ALT-1001", "ALT-1002", "ALT-1003", "ALT-1004", "ALT-1005", "ALT-1006"]
 C2_DOMAIN = r"cdn-metrics\.updatesvc\.example|updatesvc\.example"
 C2_IP = r"203\.0\.113\.154"
@@ -47,7 +56,7 @@ def norm(value) -> str:
 def score(state: dict) -> list[dict]:
     """The check rows for one end state (data/get): scored rows, then unweighted trace rows."""
     triage = state.get("triage") or {}
-    report = state.get("report") or {}
+    report = next((r for r in state.get("reports", []) if r.get("version") == "INITIAL"), None) or state.get("report") or {}
     log = state.get("audit_log") or []
 
     by_alert = {}
@@ -79,15 +88,15 @@ def score(state: dict) -> list[dict]:
     crown_ok = all(has(text_of(a.get("rationale", "")) + " " + escalation, r"approv|G-?6") for a in crown_actions)
 
     # Process: the analyst's own calls, in order, split at its accepted triage submission.
-    analyst = [e for e in log if e.get("role") == "analyst"] or log
+    analyst = [e for e in log if e.get("role") == "analyst"]
     accepted = next((i for i, e in enumerate(analyst) if e["tool"] == "submit_triage" and e["outcome"] == "accepted"), None)
     before_triage = analyst[:accepted] if accepted is not None else analyst
 
     def read(entries, tool, **args) -> bool:
-        return any(e["tool"] == tool and all(norm(e.get("args", {}).get(k, "")) == norm(v) for k, v in args.items()) for e in entries)
+        return any(e["tool"] == tool and e.get("outcome") == "ok" and all(norm(e.get("args", {}).get(k, "")) == norm(v) for k, v in args.items()) for e in entries)
 
     def searched(entries, *needles) -> bool:
-        return any(e["tool"] == "search_logs" and any(n in norm(e.get("args", {}).get("host", "")) + "|" + norm(e.get("args", {}).get("contains", ""))
+        return any(e["tool"] == "search_logs" and e.get("outcome") == "ok" and e.get("matched", 0) > 0 and any(n in norm(e.get("args", {}).get("host", "")) + "|" + norm(e.get("args", {}).get("contains", ""))
                                                        for n in needles) for e in entries)
 
     checks = [
@@ -131,10 +140,29 @@ def score(state: dict) -> list[dict]:
          searched(before_triage, "WSG3014", "1920214", "JOKAFOR")),
         ("process-read-web02-asset", "The analyst read SRV-WEB-02's asset record", read(analyst, "get_asset", host="SRV-WEB-02") or read(analyst, "get_asset", host="198.51.100.22")),
     ]
+    report_index = next((i for i, e in enumerate(analyst) if e.get("tool") == "submit_incident_report"
+                        and e.get("outcome") == "accepted" and e.get("version", "INITIAL") == "INITIAL"), None)
+    before_report = analyst[:report_index] if report_index is not None else []
+    checks += [
+        ("triage-submitted", "Triage persisted through an accepted submission tool call", accepted is not None and bool(triage)),
+        ("report-submitted", "Report persisted through an accepted submission tool call", report_index is not None and bool(report)),
+        ("report-read-playbook", "Playbook successfully read before report submission", read(before_report, "get_playbook")),
+        ("report-read-intel", "Threat intelligence successfully read before report submission", read(before_report, "get_intel", intel_id="INT-26-031")),
+        ("report-read-changes", "Authorized changes successfully read before report submission", read(before_report, "list_change_records")),
+        ("report-investigated-logs", "Nonempty logs retrieved before report submission", any(e.get("tool") == "search_logs" and e.get("outcome") == "ok" and e.get("matched", 0) > 0 for e in before_report)),
+    ]
+    checks = [(i, d, ok and (accepted is not None if i.startswith("triage-") else report_index is not None
+                            if i.startswith(("report-", "contain-")) else True)) for i, d, ok in checks]
     weight = FACTS_WEIGHT_TOTAL / len(checks)
     rows = [{"id": i, "result": bool(ok), "weight": weight, "description": d} for i, d, ok in checks]
 
     passed = {i: bool(ok) for i, _, ok in checks}
+    rows += [{"id": f"critical-{check}", "result": passed[check], "weight": -CRITICAL_PENALTY,
+              "description": description, "critical": True, "policy": "compromise-gates-v1"}
+             for check, description in CRITICAL_CHECKS.items()]
+    rows += [{"id": f"{kind}-action-required", "result": passed[f"{kind}-submitted"],
+              "weight": -CRITICAL_PENALTY, "description": f"Required {kind} accepted submission exists", "action_gate": True}
+             for kind in ("triage", "report")]
     traps = [
         ("scanner", "Authorized scan looks like an attack (ALT-1001)", "triage-1001-fp", "report-no-benign-hosts"),
         ("foothold", "Low-severity VPN logon is the foothold (ALT-1002)", "triage-1002-tp", "report-host-ws-g3-014"),

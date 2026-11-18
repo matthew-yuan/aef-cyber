@@ -1,0 +1,13 @@
+title: Large single POST to an external host
+level: high
+tags: [attack.exfiltration, attack.t1041]
+logsource: {service: proxy}
+detection:
+  selection:
+    method: POST
+    bytes_out|gt: 10000000
+  internal:
+    dest_ip|startswith:
+      - '192.0.2.'
+      - '198.51.100.'
+  condition: selection and not internal

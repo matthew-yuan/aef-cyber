@@ -1,0 +1,260 @@
+{
+  "schema_version": "1.0",
+  "incident_id": "INC-26-1107",
+  "note": "Labels for grading only. Never load this file into the soc or lab environments; it ships only inside the scoring image.",
+  "malicious_records": {
+    "auth": {
+      "auth-006": "vpn_foreign_logon",
+      "auth-007": "rdp_from_vpn",
+      "auth-008": "svc_backup_spray",
+      "auth-009": "svc_backup_spray",
+      "auth-010": "svc_backup_spray",
+      "auth-011": "svc_backup_spray",
+      "auth-012": "svc_backup_spray",
+      "auth-013": "svc_backup_spray",
+      "auth-014": "svc_backup_spray",
+      "auth-015": "svc_backup_spray",
+      "auth-016": "svc_backup_spray",
+      "auth-017": "svc_backup_spray",
+      "auth-018": "svc_backup_spray",
+      "auth-019": "svc_backup_spray",
+      "auth-020": "svc_backup_success",
+      "auth-021": "lateral_wmi"
+    },
+    "dns": {
+      "dns-004": "c2_beacon_dns",
+      "dns-005": "c2_beacon_dns",
+      "dns-006": "c2_beacon_dns",
+      "dns-007": "c2_beacon_dns",
+      "dns-008": "c2_beacon_dns",
+      "dns-009": "c2_beacon_dns",
+      "dns-010": "c2_beacon_dns",
+      "dns-012": "c2_beacon_dns",
+      "dns-013": "c2_beacon_dns"
+    },
+    "proxy": {
+      "proxy-002": "payload_download",
+      "proxy-003": "c2_beacon_proxy",
+      "proxy-004": "c2_beacon_proxy",
+      "proxy-005": "exfil_upload",
+      "proxy-006": "c2_beacon_proxy",
+      "proxy-009": "c2_beacon_proxy"
+    },
+    "endpoint": {
+      "endpoint-003": "download_cradle",
+      "endpoint-004": "persistence_task",
+      "endpoint-005": "payload_download",
+      "endpoint-006": "svc_backup_spray",
+      "endpoint-007": "collection_archive",
+      "endpoint-008": "collection_archive",
+      "endpoint-009": "lateral_wmi",
+      "endpoint-010": "service_install_decommissioned"
+    }
+  },
+  "fp_exempt": {
+    "note": "The unrelated phishing click (ALT-1004): a true positive of its own, neutral for intrusion rules.",
+    "dns": [
+      "dns-011"
+    ],
+    "proxy": [
+      "proxy-007",
+      "proxy-008"
+    ],
+    "endpoint": [
+      "endpoint-011"
+    ]
+  },
+  "must_not_match": {
+    "note": "Planted benign traps: authorized activity and the normal backup logon.",
+    "auth": [
+      "auth-022"
+    ],
+    "endpoint": [
+      "endpoint-001",
+      "endpoint-002"
+    ],
+    "dns": [
+      "dns-001"
+    ]
+  },
+  "behaviors": {
+    "vpn_foreign_logon": [
+      "auth-006"
+    ],
+    "svc_backup_spray": [
+      "auth-008",
+      "auth-009",
+      "auth-010",
+      "auth-011",
+      "auth-012",
+      "auth-013",
+      "auth-014",
+      "auth-015",
+      "auth-016",
+      "auth-017",
+      "auth-018",
+      "auth-019",
+      "endpoint-006"
+    ],
+    "c2_beacon_dns": [
+      "dns-004",
+      "dns-005",
+      "dns-006",
+      "dns-007",
+      "dns-008",
+      "dns-009",
+      "dns-010",
+      "dns-012",
+      "dns-013"
+    ],
+    "c2_beacon_proxy": [
+      "proxy-003",
+      "proxy-004",
+      "proxy-006",
+      "proxy-009"
+    ],
+    "exfil_upload": [
+      "proxy-005"
+    ],
+    "persistence_task": [
+      "endpoint-004"
+    ],
+    "lateral_wmi": [
+      "endpoint-009",
+      "auth-021"
+    ],
+    "service_install_decommissioned": [
+      "endpoint-010"
+    ]
+  },
+  "hosts": {
+    "compromised": [
+      "WS-G3-014",
+      "SRV-FILE-01",
+      "SRV-WEB-02"
+    ],
+    "neutral": [
+      "VPN-GW-01"
+    ],
+    "benign": [
+      "WS-G6-021",
+      "SRV-VSCAN-01",
+      "WS-G1-007",
+      "WS-MED-003",
+      "SRV-DC-01"
+    ]
+  },
+  "expected_iocs": {
+    "required": [
+      {
+        "type": "domain",
+        "value": "cdn-metrics.updatesvc.example"
+      },
+      {
+        "type": "ipv4",
+        "value": "203.0.113.154"
+      },
+      {
+        "type": "ipv4",
+        "value": "203.0.113.77"
+      },
+      {
+        "type": "file",
+        "value": "odsh.exe"
+      },
+      {
+        "type": "scheduled_task",
+        "value": "OneDriveSyncHelper"
+      },
+      {
+        "type": "service",
+        "value": "UpdateSvcHelper"
+      },
+      {
+        "type": "url_path",
+        "value": "/api/v1/upload"
+      },
+      {
+        "type": "account",
+        "value": "svc_backup"
+      }
+    ],
+    "evidence_only": [
+      {
+        "type": "domain",
+        "value": "cdn-telemetry.updatesvc.example"
+      },
+      {
+        "type": "mutex",
+        "value": "Global\\ODSH-7c1e"
+      },
+      {
+        "type": "pdb_path",
+        "value": "C:\\build\\kestrel\\odsh.pdb"
+      },
+      {
+        "type": "user_agent",
+        "value": "UpdateSvc/1.2"
+      }
+    ],
+    "forbidden": [
+      "198.51.100.40",
+      "pwaudit.exe",
+      "WS-G6-021",
+      "SRV-VSCAN-01",
+      "hr.ex-net-52.example",
+      "mail.ex-net-52.example",
+      "vulnfeed.ex-net-52.example",
+      "198.51.100.5",
+      "SRV-DC-01"
+    ],
+    "unrelated_ok": [
+      "portal-benefits-login.example",
+      "203.0.113.201"
+    ]
+  },
+  "evidence_facts": {
+    "EV-01": [
+      "cdn-metrics\\.updatesvc\\.example",
+      "odsh\\.exe",
+      "OneDriveSyncHelper|schtasks"
+    ],
+    "EV-02": [
+      "OneDriveSyncHelper",
+      "PT5M|5 ?min|every 5|300 ?s",
+      "odsh\\.exe",
+      "j\\.?okafor|hidden"
+    ],
+    "EV-03": [
+      "odsh\\.exe",
+      "203\\.0\\.113\\.154",
+      "bk_2026\\.7z",
+      "OneDriveSyncHelper|scheduled task"
+    ],
+    "EV-04": [
+      "UpdateSvcHelper",
+      "Temp\\\\+odsh\\.exe|odsh\\.exe",
+      "uptime|last boot|never (been )?powered off|2026-09-30|CHG-0398|still running",
+      "203\\.0\\.113\\.154|svc_backup"
+    ],
+    "EV-05": [
+      "updatesvc\\.example",
+      "/api/v1/(upload|ping)",
+      "odsh\\.pdb|kestrel|UpdateSvc/1\\.2|PDB"
+    ],
+    "EV-06": [
+      "portal-benefits-login\\.example",
+      "unrelated|not (part|related|connected)|separate|no follow|credential"
+    ],
+    "EV-07": [
+      "cdn-telemetry\\.updatesvc\\.example|fallback",
+      "300|5 ?min",
+      "ODSH-7c1e|mutex",
+      "2026-12-31|kill.?date"
+    ]
+  },
+  "evidence_decoys": {
+    "EV-03": "the OneDrive run key is legitimate; a report that calls it persistence is wrong",
+    "EV-06": "a page view with no POST and no follow-on; must not be merged into the intrusion"
+  }
+}
